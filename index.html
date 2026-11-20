@@ -1,0 +1,656 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Mapa de cola</title>
+<meta name="description" content="Qué hace la cola, dónde corre cada parte y qué conecta con qué.">
+<link rel="icon" href="data:,">
+<style>
+/* Una columna de lectura con el índice pegado arriba (en pantallas anchas, a la izquierda y con los diagramas de cada
+   sección); los diagramas y las tablas se desplazan dentro de su caja. */
+:root{
+  --bg:#f5f6f8;--surface:#ffffff;--fg:#16191e;--muted:#596170;--line:#dce0e6;--accent:#1d5d91;--code:#eceff3;
+  --portatil:#2f62b3;--vps:#b8620b;--actions:#6b3fb3;--github:#2e7d43;--fuera:#6b6b74;--tu:#9a7b00;
+  --display:"Space Grotesk",system-ui,sans-serif;--text:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#111317;--surface:#191c21;--fg:#e7e9ec;--muted:#a2a9b5;--line:#2b3038;--accent:#82b6e6;--code:#22262d;
+  --portatil:#7ea6e6;--vps:#efa45c;--actions:#b493ea;--github:#6fc187;--fuera:#a3a3ad;--tu:#e2c55a;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111317;--surface:#191c21;--fg:#e7e9ec;--muted:#a2a9b5;--line:#2b3038;--accent:#82b6e6;--code:#22262d;
+  --portatil:#7ea6e6;--vps:#efa45c;--actions:#b493ea;--github:#6fc187;--fuera:#a3a3ad;--tu:#e2c55a;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:16px/1.6 var(--text);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.pagina{max-width:68rem;margin:0 auto}
+header{padding-block:28px 8px}
+h1{font:700 2.1rem/1.15 var(--display);margin:0;letter-spacing:-.01em;text-wrap:balance}
+h2{font:600 1.45rem/1.25 var(--display);margin:0 0 .6em;text-wrap:balance}
+.sub{color:var(--muted);max-width:65ch;margin:.5em 0 0}
+a{color:var(--accent)}
+a:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+code{font:.88em var(--mono);background:var(--code);padding:.08em .32em;border-radius:4px;overflow-wrap:anywhere}
+.cifras{display:grid;grid-template-columns:repeat(auto-fit,minmax(7.5rem,1fr));gap:10px;margin:20px 0 10px}
+.cifra{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:.55em .8em}
+.cifra b{display:block;font:600 1.6rem/1.2 var(--display);font-variant-numeric:tabular-nums}
+.cifra span{color:var(--muted);font-size:.85rem}
+.leyenda{display:flex;flex-wrap:wrap;gap:.35em 1.1em;margin:6px 0 0;padding:0;list-style:none;color:var(--muted);font-size:.88rem}
+.leyenda li{display:flex;align-items:center;gap:.4em}
+.leyenda i{width:.8em;height:.8em;border-radius:3px;border:2px solid currentColor;display:inline-block}
+nav.indice{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line);
+  margin-top:18px;overflow-x:auto;white-space:nowrap;padding-block:8px}
+nav.indice ol{display:flex;margin:0;padding:0;list-style:none}
+nav.indice ol ol,nav.indice .arriba{display:none}
+nav.indice a{display:inline-block;padding:.25em .6em;border-radius:6px;color:var(--muted);text-decoration:none;font-size:.92rem}
+nav.indice a:hover,nav.indice a[aria-current]{color:var(--fg);background:var(--code)}
+section{padding-block:30px 6px;border-bottom:1px solid var(--line);scroll-margin-top:52px}
+.diagrama{scroll-margin-top:60px}
+@media (min-width:75rem){
+  .pagina{max-width:none;display:grid;grid-template-columns:15rem minmax(0,68rem);column-gap:40px;justify-content:center}
+  .pagina>header,.pagina>main,.pagina>footer{grid-column:2}
+  nav.indice{grid-column:1;grid-row:1/span 3;align-self:start;max-height:100vh;overflow:auto;white-space:normal;
+    margin:0;padding:28px 0 24px;border:0}
+  nav.indice ol{display:block}
+  nav.indice ol ol{display:block;margin:.1em 0 .35em .7em;padding-left:.45em;border-left:1px solid var(--line)}
+  nav.indice ol ol a{font-size:.84rem;line-height:1.35}
+  nav.indice a{display:block}
+  nav.indice .arriba{display:block;font:600 1.05rem/1.3 var(--display);color:var(--fg);margin-bottom:.5em}
+  section,.diagrama{scroll-margin-top:16px}
+}
+section>p,section li{max-width:72ch}
+.diagrama{position:relative;margin:16px 0;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.lienzo{overflow:auto;max-height:82vh;padding:46px 12px 12px;cursor:grab}  /* arriba, sitio para los botones */
+.lienzo.arrastre{cursor:grabbing;user-select:none}
+pre.mermaid{margin:0;background:none;text-align:center;font:13px/1.4 var(--mono);white-space:pre}
+.diagrama figcaption{font-size:.82rem;color:var(--muted);padding:0 12px 10px}
+.herr{position:absolute;top:8px;right:8px;display:flex;gap:4px;z-index:1}
+.herr button{font:500 .85rem var(--text);min-width:2.1em;padding:.15em .5em;border:1px solid var(--line);border-radius:6px;
+  background:var(--surface);color:var(--fg);cursor:pointer}
+.diagrama:fullscreen{border:0;border-radius:0}
+.diagrama:fullscreen .lienzo{max-height:none;height:100vh}
+.tabla{overflow-x:auto;margin:14px 0}
+table{border-collapse:collapse;width:100%;font-size:.93rem;background:var(--surface)}
+th,td{text-align:left;vertical-align:top;padding:.45em .65em;border-bottom:1px solid var(--line)}
+th{font-weight:600;background:var(--code)}
+td.r,th.r{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+details{margin:14px 0;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:.5em .9em}
+summary{cursor:pointer;font-weight:600}
+details .tabla table{background:transparent}
+footer{color:var(--muted);font-size:.88rem;padding-block:24px 40px}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div class="pagina"><header id="arriba"><h1>Mapa de cola</h1><p class="sub">Qué hace la cola, dónde corre cada parte y qué conecta con qué. Página generada por <code>docs/mapa.py</code> a partir del código, que vive en un repo privado; sin las llaves ni el nombre de las máquinas.</p><div class="cifras"><div class="cifra"><b>14</b><span>rutas</span></div><div class="cifra"><b>8</b><span>alias</span></div><div class="cifra"><b>10</b><span>cuentas</span></div><div class="cifra"><b>5</b><span>CLIs</span></div><div class="cifra"><b>3</b><span>máquinas</span></div><div class="cifra"><b>27</b><span>órdenes</span></div></div><ul class="leyenda" aria-label="Colores de los diagramas"><li style="color:var(--portatil)"><i></i><span style="color:var(--muted)">Portátil</span></li><li style="color:var(--vps)"><i></i><span style="color:var(--muted)">VPS</span></li><li style="color:var(--actions)"><i></i><span style="color:var(--muted)">Actions</span></li><li style="color:var(--github)"><i></i><span style="color:var(--muted)">GitHub</span></li><li style="color:var(--fuera)"><i></i><span style="color:var(--muted)">Fuera</span></li><li style="color:var(--tu)"><i></i><span style="color:var(--muted)">Tú</span></li></ul></header>
+<nav class="indice" aria-label="Índice"><a class="arriba" href="#arriba">Mapa de cola</a><ol><li><a href="#piezas">Piezas y dónde viven</a></li><li><a href="#trabajo">Un trabajo</a><ol><li><a href="#d-un-trabajo-de-principio-a-fin">Un trabajo de principio a fin</a></li><li><a href="#d-estados-de-un-trabajo">Estados de un trabajo</a></li></ol></li><li><a href="#tic">El tic</a></li><li><a href="#ruta">Elección de ruta</a></li><li><a href="#catalogo">Catálogo</a></li><li><a href="#consultas">Consultas</a><ol><li><a href="#d-cómo-se-monta-el-prompt">Cómo se monta el prompt</a></li><li><a href="#d-segunda-opinión-con-cola-preguntar---contrastar">Segunda opinión con cola preguntar --contrastar</a></li><li><a href="#d-pasos-de---contrastar-y---revisar-en-cola-nuevo">Pasos de --contrastar y --revisar en cola nuevo</a></li></ol></li><li><a href="#webs">Webs por el navegador</a></li><li><a href="#vps">Agentes en el VPS</a><ol><li><a href="#d-un-agente-en-el-vps">Un agente en el VPS</a></li><li><a href="#d-cola-actualizar-y-cola-vps-actualizar">cola actualizar y cola vps-actualizar</a></li></ol></li><li><a href="#actions">GitHub Actions</a></li><li><a href="#estado">Estado compartido</a></li><li><a href="#codigo">Código</a></li></ol></nav>
+<main><section id="piezas" aria-labelledby="t-piezas"><h2 id="t-piezas">Piezas y dónde viven</h2><p>La cola reparte peticiones a modelos entre tres máquinas, según la cuota de cada cuenta. El código vive en <code>thendabs1/cola</code> y el estado en <code>thendabs1/cola-datos</code>, que hace de bus: cada máquina hace pull antes de su tic y push después. Colores: azul, el portátil; naranja, el VPS; violeta, los runners de Actions; verde, GitHub; gris, lo de fuera; amarillo, tú.</p><figure class="diagrama" id="d-piezas-y-dónde-viven" aria-label="Piezas y dónde viven"><div class="herr"><button type="button" data-z="menos" aria-label="Alejar">−</button><button type="button" data-z="mas" aria-label="Acercar">+</button><button type="button" data-z="ajustar">Ajustar</button><button type="button" data-z="pantalla" aria-label="Pantalla completa">⛶</button></div><div class="lienzo"><pre class="mermaid">flowchart TB
+  accTitle: Piezas y dónde viven
+  tu(["tú"]):::tu
+  subgraph sg_p["Portátil · portatil · donde = local"]
+    p_cola["~/.local/share/cola · cola.py&lt;br&gt;nuevo · preguntar · aprobar · ver"]:::portatil
+    p_timer["cola.timer&lt;br&gt;cola tic cada 5 min"]:::portatil
+    p_clis["CLIs&lt;br&gt;claude · opencode · codex · agy"]:::portatil
+    p_ff["Firefox + Violentmonkey&lt;br&gt;userscript cola-web 1.30"]:::portatil
+    p_panel["panel GNOME&lt;br&gt;cola estado --json"]:::portatil
+    p_skill["agentes: Claude Code y Codex&lt;br&gt;skill consultar-cola"]:::portatil
+    p_datos[("~/cola-datos")]:::portatil
+    p_cache[("~/.cache/cola")]:::portatil
+  end
+  subgraph sg_v["VPS · vps · donde = vps · shell"]
+    v_cola[("~/cola")]:::vps
+    v_timer["cola.timer&lt;br&gt;cola tic cada 5 min"]:::vps
+    v_clis["CLIs&lt;br&gt;claude · codex · opencode · agy"]:::vps
+    v_datos[("~/cola-datos")]:::vps
+    v_repos[("/home/cola/repos/*.git&lt;br&gt;remoto vps de tus repos")]:::vps
+    v_arboles[("~/.cache/cola/arboles&lt;br&gt;clones en cola/#lt;id#gt;")]:::vps
+  end
+  subgraph sg_g["GitHub"]
+    g_cola[("thendabs1/cola&lt;br&gt;código · CI")]:::github
+    g_datos[("thendabs1/cola-datos&lt;br&gt;estado · workflow cola")]:::github
+    g_bot[("cuenta bot/#lt;repo#gt;&lt;br&gt;workflows de los agentes")]:::github
+  end
+  subgraph sg_a["Runners de Actions · donde = actions"]
+    a_jobs{{"workflow cola&lt;br&gt;plan → ejecutar → aplicar"}}:::actions
+  end
+  subgraph sg_x["Fuera"]
+    x_modelos(["Anthropic · OpenAI · OpenCode · Google&lt;br&gt;por sus CLIs"]):::fuera
+    x_webs(["ChatGPT · Gemini · Copilot&lt;br&gt;por el navegador"]):::fuera
+    x_cuota(["endpoints de cuota&lt;br&gt;Claude · Codex"]):::fuera
+  end
+  tu --&gt; p_cola
+  tu --&gt; p_skill --&gt; p_cola
+  p_panel --&gt; p_cola
+  p_timer --&gt; p_cola
+  p_cola &lt;--&gt; p_datos
+  p_cola --&gt; p_cache
+  p_cola --&gt; p_clis --&gt; x_modelos
+  p_cola --&gt; p_ff --&gt; x_webs
+  p_cola --&gt; x_cuota
+  p_datos &lt;--&gt;|"pull · push"| g_datos
+  v_datos &lt;--&gt;|"pull · push"| g_datos
+  v_timer &lt;--&gt; v_datos
+  v_cola --&gt; v_timer
+  v_timer --&gt; v_clis --&gt; x_modelos
+  p_cola --&gt;|"ssh"| v_repos
+  v_repos --&gt; v_arboles
+  v_clis --&gt; v_arboles
+  v_clis -.-&gt;|"agentes con «todas»"| g_bot
+  g_cola --&gt;|"vps-actualizar"| v_cola
+  g_cola --&gt;|"checkout"| a_jobs
+  g_datos --&gt;|"actions/pendientes.txt"| a_jobs
+  a_jobs --&gt;|"commit"| g_datos
+  style sg_p fill:transparent,stroke:#2f62b3,stroke-width:2px
+  style sg_v fill:transparent,stroke:#b8620b,stroke-width:2px
+  style sg_g fill:transparent,stroke:#2e7d43,stroke-width:2px
+  style sg_a fill:transparent,stroke:#6b3fb3,stroke-width:2px
+  style sg_x fill:transparent,stroke:#6b6b74,stroke-width:2px,stroke-dasharray:4 3
+  classDef tu fill:#fff1b8,stroke:#9a7b00,color:#3d3000
+  classDef portatil fill:#dbe8fb,stroke:#2f62b3,color:#0f2a55
+  classDef vps fill:#fde3c8,stroke:#b8620b,color:#4a2600
+  classDef ambas fill:#d5ecee,stroke:#2f7f88,color:#0f3337
+  classDef actions fill:#ebdffb,stroke:#6b3fb3,color:#2b1250
+  classDef github fill:#d9f0dc,stroke:#2e7d43,color:#123d1d
+  classDef fuera fill:#ececee,stroke:#6b6b74,color:#222226
+  classDef si fill:#d9f0dc,stroke:#2e7d43,color:#123d1d
+  classDef no fill:#fbe0de,stroke:#b3423b,color:#4a1210</pre></div><figcaption>Piezas y dónde viven</figcaption></figure><div class="tabla"><table><thead><tr><th class="l">Máquina</th><th class="l">nombre</th><th class="l">donde</th><th class="l">CLIs</th><th class="l">Además</th><th class="l">Qué hace</th></tr></thead><tbody><tr><td class="l"><strong>Portátil</strong></td><td class="l"><code>portatil</code></td><td class="l"><code>local</code></td><td class="l">claude · opencode · codex · agy</td><td class="l">llega al VPS por SSH (<code>vps</code>); webs en el perfil de Firefox «default»</td><td class="l">Donde trabajas: creas y apruebas trabajos, preguntas al momento y usas las webs por Firefox. Su tic corre los trabajos «local» y «cualquiera», y lee la cuota de Claude, Codex y agy y la publica para las demás.</td></tr><tr><td class="l"><strong>VPS</strong></td><td class="l"><code>vps</code></td><td class="l"><code>vps</code></td><td class="l">claude · codex · opencode · agy</td><td class="l"><code>shell = true</code>: agentes con «todas»; <code>github</code>: <code>gh</code> como la cuenta bot</td><td class="l">Siempre encendido (1 CPU, ~1 GB): su tic corre los trabajos «vps» y «cualquiera», también de noche, y los agentes con shell («todas»).</td></tr><tr><td class="l"><strong>Runners de Actions</strong></td><td class="l"><code>actions</code></td><td class="l"><code>actions</code></td><td class="l">—</td><td class="l">—</td><td class="l">Los jobs plan y aplicar del workflow cola: pasos de tipo comando de los trabajos «actions». Sin CLIs de modelos ni cuentas.</td></tr></tbody></table></div><p>Ejemplos en <code>maquina.ejemplo.toml</code>, <code>maquina.vps.ejemplo.toml</code>, <code>maquina.actions.toml</code>. Cada máquina tiene el suyo en <code>~/.config/cola/maquina.toml</code>, fuera de cualquier repo: dice dónde están sus binarios y sus credenciales.</p></section><section id="trabajo" aria-labelledby="t-trabajo"><h2 id="t-trabajo">Un trabajo</h2><p><code>cola nuevo</code> deja un trabajo en cola-datos; cualquier tic que pueda correrlo lo coge, paso a paso, y cada paso deja su salida y su línea en el registro. <code>cola preguntar</code> es el atajo sin trabajo (ver «Consultas»).</p><figure class="diagrama" id="d-un-trabajo-de-principio-a-fin" aria-label="Un trabajo de principio a fin"><div class="herr"><button type="button" data-z="menos" aria-label="Alejar">−</button><button type="button" data-z="mas" aria-label="Acercar">+</button><button type="button" data-z="ajustar">Ajustar</button><button type="button" data-z="pantalla" aria-label="Pantalla completa">⛶</button></div><div class="lienzo"><pre class="mermaid">sequenceDiagram
+  actor tu as Tú
+  participant C as cola (portátil)
+  participant D as cola-datos (GitHub)
+  participant T as tic (una máquina)
+  participant M as CLI del modelo
+  tu-&gt;&gt;C: cola nuevo "…" --modelo alto
+  C-&gt;&gt;C: valida el trabajo y, si va a una web, que el prompt cabe
+  C-&gt;&gt;D: trabajos/#lt;id#gt;/ y control.json, commit y push
+  Note over C,D: desde una terminal queda aprobado, desde un agente espera a cola aprobar
+  tu-&gt;&gt;C: cola aprobar #lt;id#gt; (si hace falta)
+  loop cada 5 min, como mucho un paso por pasada
+    T-&gt;&gt;D: pull --rebase (cola.py fusionar junta estado.json y control.json)
+    T-&gt;&gt;T: siguiente paso y ruta con cuota
+    T-&gt;&gt;D: reclama el paso: estado.json en_curso y push
+    T-&gt;&gt;M: prompt
+    M--&gt;&gt;T: respuesta, gasto y, si lo hubo, límite
+    T-&gt;&gt;D: salidas/, estado.json y registro/, commit y push
+  end
+  tu-&gt;&gt;C: cola ver #lt;id#gt; --salidas</pre></div><figcaption>Un trabajo de principio a fin</figcaption></figure><p>El estado del trabajo sale de los de sus pasos (<code>estado_de</code>). Se mira en este orden: cancelado, inválido, sin aprobar, pausado y, si no, el peor de sus pasos.</p><figure class="diagrama" id="d-estados-de-un-trabajo" aria-label="Estados de un trabajo"><div class="herr"><button type="button" data-z="menos" aria-label="Alejar">−</button><button type="button" data-z="mas" aria-label="Acercar">+</button><button type="button" data-z="ajustar">Ajustar</button><button type="button" data-z="pantalla" aria-label="Pantalla completa">⛶</button></div><div class="lienzo"><pre class="mermaid">stateDiagram-v2
+  [*] --&gt; pendiente: cola nuevo desde una terminal
+  [*] --&gt; sin_aprobar: cola nuevo desde un agente
+  sin_aprobar --&gt; pendiente: cola aprobar
+  pendiente --&gt; esperando: sin ruta con cuota o antes de no_antes
+  esperando --&gt; pendiente: reinicio, fin del bloqueo, llega la hora o cola usar-reserva
+  pendiente --&gt; en_curso: un tic reclama el paso
+  en_curso --&gt; pendiente: quedan pasos o hubo un límite
+  en_curso --&gt; sin_aprobar: paso con revisar = true
+  en_curso --&gt; hecho: era el último paso
+  en_curso --&gt; error: fallo, 5 límites seguidos o un tope
+  en_curso --&gt; incierto: el proceso o la máquina desaparecieron
+  error --&gt; pendiente: cola reintentar
+  incierto --&gt; pendiente: cola reintentar
+  pendiente --&gt; pausado: cola pausar
+  pausado --&gt; pendiente: cola reanudar
+  pendiente --&gt; cancelado: cola cancelar
+  hecho --&gt; [*]
+  cancelado --&gt; [*]</pre></div><figcaption>Estados de un trabajo</figcaption></figure><details><summary>Los 10 estados, los 6 tipos de paso, las prioridades y dónde corre</summary><div class="tabla"><table><thead><tr><th class="l">Estado</th><th class="l">Cuándo</th></tr></thead><tbody><tr><td class="l"><code>cancelado</code></td><td class="l"><code>cola cancelar</code>: no vuelve a correr</td></tr><tr><td class="l"><code>invalido</code></td><td class="l"><code>trabajo.toml</code> no pasa la validación</td></tr><tr><td class="l"><code>sin_aprobar</code></td><td class="l">sin aprobar, cambiado después de aprobarlo, o con un paso «revisar» hecho que aún no has visto</td></tr><tr><td class="l"><code>pausado</code></td><td class="l"><code>cola pausar</code></td></tr><tr><td class="l"><code>error</code></td><td class="l">un paso falló o llegó a un tope; <code>cola reintentar</code></td></tr><tr><td class="l"><code>incierto</code></td><td class="l">el proceso murió o su máquina no volvió: pudo gastar cuota; <code>cola reintentar</code></td></tr><tr><td class="l"><code>en_curso</code></td><td class="l">una máquina ejecuta un paso</td></tr><tr><td class="l"><code>esperando</code></td><td class="l">un paso espera cuota, el fin de un bloqueo o su hora (<code>no_antes</code>)</td></tr><tr><td class="l"><code>pendiente</code></td><td class="l">le toca al siguiente tic que pueda correrlo</td></tr><tr><td class="l"><code>hecho</code></td><td class="l">todos los pasos hechos</td></tr></tbody></table></div><div class="tabla"><table><thead><tr><th class="l">Tipo de paso</th><th class="l">Qué hace</th></tr></thead><tbody><tr><td class="l"><code>normal</code></td><td class="l">un prompt, una respuesta</td></tr><tr><td class="l"><code>planificar</code></td><td class="l">responde un JSON con subconsultas (esquema fijo) en <code>salidas/&lt;paso&gt;.json</code></td></tr><tr><td class="l"><code>abanico</code></td><td class="l">una llamada por subconsulta del plan, una por tic (hasta 8)</td></tr><tr><td class="l"><code>sintetizar</code></td><td class="l">junta las salidas de los pasos que usa: es el paso <code>contraste</code> de <code>--contrastar</code></td></tr><tr><td class="l"><code>revisar</code></td><td class="l">revisa otra salida y acaba en APROBADO o CAMBIOS: es el paso <code>revision</code> de <code>--revisar</code></td></tr><tr><td class="l"><code>comando</code></td><td class="l">una orden de shell, solo en GitHub Actions (<code>--comando</code>)</td></tr></tbody></table></div><div class="tabla"><table><thead><tr><th class="l">Prioridad</th><th class="l">Qué significa</th></tr></thead><tbody><tr><td class="l"><code>alta</code></td><td class="l">va primero y corre aunque no se haya podido leer la cuota (es la de <code>preguntar</code> y <code>despertar</code>)</td></tr><tr><td class="l"><code>normal</code></td><td class="l">la de siempre</td></tr><tr><td class="l"><code>relleno</code></td><td class="l">solo con cuota leída y cerca de un reinicio, para aprovechar lo que sobra de la ventana</td></tr></tbody></table></div><div class="tabla"><table><thead><tr><th class="l">donde</th><th class="l">Quién lo coge</th></tr></thead><tbody><tr><td class="l"><code>cualquiera</code></td><td class="l">la primera que lo reclame (push de su <code>estado.json</code>)</td></tr><tr><td class="l"><code>local</code></td><td class="l">solo el portátil</td></tr><tr><td class="l"><code>vps</code></td><td class="l">solo el VPS (los de <code>--herramientas</code>)</td></tr><tr><td class="l"><code>actions</code></td><td class="l">solo GitHub Actions (los de <code>--comando</code>)</td></tr></tbody></table></div></details></section><section id="tic" aria-labelledby="t-tic"><h2 id="t-tic">El tic</h2><p>Lo lanza <code>cola.timer</code> cada 5 min en el portátil y en el VPS; <code>cola.service</code> lo corta a los 330 min. Ejecuta como mucho un paso por pasada y, mientras ese paso corre, el tic de esa máquina no hace nada más.</p><figure class="diagrama" id="d-el-tic" aria-label="El tic"><div class="herr"><button type="button" data-z="menos" aria-label="Alejar">−</button><button type="button" data-z="mas" aria-label="Acercar">+</button><button type="button" data-z="ajustar">Ajustar</button><button type="button" data-z="pantalla" aria-label="Pantalla completa">⛶</button></div><div class="lienzo"><pre class="mermaid">flowchart TD
+  accTitle: El tic
+  ini(["cola tic"]) --&gt; lock{"¿tic.lock libre?"}
+  lock --&gt;|"no"| f1["sale: hay otro tic en marcha"]:::no
+  lock --&gt;|"sí"| sync["sincroniza cola-datos: commit local, pull --rebase y push&lt;br&gt;sin red: solo los trabajos de esta máquina"]
+  sync --&gt; rec["reconcilia: un en_curso de esta máquina es huérfano,&lt;br&gt;y uno ajeno si pasa de su tiempo máximo + 20 min&lt;br&gt;→ incierto"]
+  rec --&gt; pp["reintenta los push pendientes de ramas cola/#lt;id#gt;"]
+  pp --&gt; blo["bloqueos de hace más de 10 min: mira la cuota real:&lt;br&gt;si hay margen, los levanta, y si está llena, los alarga hasta el reinicio"]
+  blo --&gt; lista["trabajos pendientes o esperando de esta máquina o de cualquiera,&lt;br&gt;por prioridad y antigüedad"]
+  lista --&gt; cuo["refresca y publica las cuotas que sabe leer (cada 10 min)"]
+  cuo --&gt; paso{"siguiente paso del trabajo&lt;br&gt;con los que usa ya hechos"}
+  paso --&gt;|"no hay"| sig{"¿queda otro trabajo?"}
+  paso --&gt; esp{"¿espera vigente, antes de no_antes,&lt;br&gt;tope de pasos (10) o de USD?"}
+  esp --&gt;|"sí"| sig
+  esp --&gt;|"no"| eleg{"elegir ruta"}
+  eleg --&gt;|"ninguna con cuota"| wait["esperas/#lt;máquina#gt;.json:&lt;br&gt;hasta cuándo y por qué"]
+  wait --&gt; sig
+  eleg --&gt;|"una ruta"| recl{"donde = cualquiera:&lt;br&gt;reclamar con push"}
+  recl --&gt;|"otra máquina lo tiene"| f2["sale sin ejecutar"]:::no
+  recl --&gt;|"es nuestro"| ej["ejecuta el paso&lt;br&gt;(tiempo máximo: 30 min por defecto)"]:::si
+  ej --&gt; com["commit y push, y sale: un paso por tic"]:::si
+  sig --&gt;|"sí"| paso
+  sig --&gt;|"no"| f3["commit de los avisos y sale"]
+  classDef tu fill:#fff1b8,stroke:#9a7b00,color:#3d3000
+  classDef portatil fill:#dbe8fb,stroke:#2f62b3,color:#0f2a55
+  classDef vps fill:#fde3c8,stroke:#b8620b,color:#4a2600
+  classDef ambas fill:#d5ecee,stroke:#2f7f88,color:#0f3337
+  classDef actions fill:#ebdffb,stroke:#6b3fb3,color:#2b1250
+  classDef github fill:#d9f0dc,stroke:#2e7d43,color:#123d1d
+  classDef fuera fill:#ececee,stroke:#6b6b74,color:#222226
+  classDef si fill:#d9f0dc,stroke:#2e7d43,color:#123d1d
+  classDef no fill:#fbe0de,stroke:#b3423b,color:#4a1210</pre></div><figcaption>El tic</figcaption></figure></section><section id="ruta" aria-labelledby="t-ruta"><h2 id="t-ruta">Elección de ruta</h2><p>Un paso pide un alias (<code>alto</code>, <code>bajo</code>…) o una ruta. <code>catalogo.elegir</code> descarta las rutas que no sirven y toma la primera que tenga cuota. Las cifras son las de por defecto; <code>config.toml</code> de cola-datos las cambia por cuenta.</p><figure class="diagrama" id="d-elección-de-ruta" aria-label="Elección de ruta"><div class="herr"><button type="button" data-z="menos" aria-label="Alejar">−</button><button type="button" data-z="mas" aria-label="Acercar">+</button><button type="button" data-z="ajustar">Ajustar</button><button type="button" data-z="pantalla" aria-label="Pantalla completa">⛶</button></div><div class="lienzo"><pre class="mermaid">flowchart TD
+  accTitle: Elección de ruta
+  m(["modelo del paso: alias o ruta"]) --&gt; cand["candidatas: la ruta, o las del alias en su orden"]
+  cand --&gt; req{"¿cumple lo que pide el paso?&lt;br&gt;esfuerzo · herramientas · donde&lt;br&gt;gratis (alias gratis) · sin pago"}
+  req --&gt;|"ninguna"| otra["en esta máquina no corre:&lt;br&gt;el paso es para otra"]:::no
+  req --&gt;|"las que sí"| pref["primero, la de una sesión a medias&lt;br&gt;(misma ruta y máquina: se retoma)"]
+  pref --&gt; cada["siguiente ruta, con su cuenta"]
+  cada --&gt; blq{"¿bloqueada por un límite?"}
+  blq --&gt;|"sí"| prox["descartada"]
+  blq --&gt;|"no"| tope{"¿llegó al tope diario?&lt;br&gt;(40 ejecuciones por defecto)"}
+  tope --&gt;|"sí"| prox
+  tope --&gt;|"no"| con{"¿cuota leída?"}
+  con --&gt;|"no, y es Claude o Codex"| alta{"¿prioridad alta,&lt;br&gt;o la de sin_lectura?"}
+  alta --&gt;|"no"| prox
+  alta --&gt;|"sí"| ok
+  con --&gt;|"no, otra cuenta"| rel1{"¿relleno?"}
+  rel1 --&gt;|"sí"| prox
+  rel1 --&gt;|"no"| ok
+  con --&gt;|"sí"| r5{"¿ventana de 5 h por encima del 70 %?"}
+  r5 --&gt;|"sí"| prox
+  r5 --&gt;|"no"| rs{"¿semana por encima del 80 %?"}
+  rs --&gt;|"sí"| prox
+  rs --&gt;|"no"| rel2{"¿relleno?"}
+  rel2 --&gt;|"no"| ok
+  rel2 --&gt;|"sí"| cerca{"¿reinicio en menos de 6 h?"}
+  cerca --&gt;|"no"| prox
+  cerca --&gt;|"sí"| ok(["esta ruta"]):::si
+  prox --&gt;|"quedan"| cada
+  prox --&gt;|"no quedan"| espera["el paso espera hasta el primer reinicio&lt;br&gt;o fin de bloqueo que se conozca"]:::no
+  classDef tu fill:#fff1b8,stroke:#9a7b00,color:#3d3000
+  classDef portatil fill:#dbe8fb,stroke:#2f62b3,color:#0f2a55
+  classDef vps fill:#fde3c8,stroke:#b8620b,color:#4a2600
+  classDef ambas fill:#d5ecee,stroke:#2f7f88,color:#0f3337
+  classDef actions fill:#ebdffb,stroke:#6b3fb3,color:#2b1250
+  classDef github fill:#d9f0dc,stroke:#2e7d43,color:#123d1d
+  classDef fuera fill:#ececee,stroke:#6b6b74,color:#222226
+  classDef si fill:#d9f0dc,stroke:#2e7d43,color:#123d1d
+  classDef no fill:#fbe0de,stroke:#b3423b,color:#4a1210</pre></div><figcaption>Elección de ruta</figcaption></figure><p><strong>De dónde sale la cuota.</strong> De una lectura propia, que se guarda 10 min y caduca tras cada paso con la cuenta. Si aquí no se puede leer (el VPS con <code>setup-token</code>), vale la que otra máquina publicó en <code>cuotas/&lt;máquina&gt;.json</code> si tiene menos de 15 min y es posterior al último paso con esa cuenta. Tras un límite la cuenta queda bloqueada hasta la hora que da el CLI (o 1 h si no la da; 10 min si es saturación del servidor y no el límite de la cuenta, que tampoco cuenta para los 5 límites seguidos que dan el paso por error); pasados 10 min, cada tic mira la cuota real: levanta el bloqueo si hay margen o lo alarga hasta el reinicio de la ventana llena. Uno de más de 6 h (la fecha de un límite semanal, que puede ser el de un modelo) no lo toca. <code>cola preguntar</code> elige igual, con prioridad alta.</p></section><section id="catalogo" aria-labelledby="t-catalogo"><h2 id="t-catalogo">Catálogo</h2><p>De <code>modelos.toml</code>: 14 rutas (CLI, cuenta y modelo) en 10 cuentas, y 8 alias. Un alias es una lista ordenada de rutas; el número de cada flecha es su puesto. Las webs solo están en <code>juez</code>; si no, se piden por su ruta. En verde azulado, las rutas que corren en el portátil y en el VPS; en azul, solo en el portátil.</p><figure class="diagrama" id="d-catálogo" aria-label="Catálogo"><div class="herr"><button type="button" data-z="menos" aria-label="Alejar">−</button><button type="button" data-z="mas" aria-label="Acercar">+</button><button type="button" data-z="ajustar">Ajustar</button><button type="button" data-z="pantalla" aria-label="Pantalla completa">⛶</button></div><div class="lienzo"><pre class="mermaid">flowchart LR
+  accTitle: Catálogo
+  a_alto(["alto"]):::tu
+  a_medio(["medio"]):::tu
+  a_bajo(["bajo"]):::tu
+  a_gratis(["gratis"]):::tu
+  a_revisor(["revisor"]):::tu
+  a_juez(["juez"]):::tu
+  a_verificador(["verificador"]):::tu
+  a_verificador_confianza(["verificador_confianza"]):::tu
+  r_claude_pro_opus["claude-pro-opus&lt;br&gt;opus"]:::ambas
+  r_claude_team_opus["claude-team-opus&lt;br&gt;opus"]:::ambas
+  r_claude_pro_haiku["claude-pro-haiku&lt;br&gt;haiku"]:::ambas
+  r_claude_team_haiku["claude-team-haiku&lt;br&gt;haiku"]:::ambas
+  r_opencode_beam["opencode-beam&lt;br&gt;opencode/beam-free"]:::ambas
+  r_opencode_mimo["opencode-mimo&lt;br&gt;opencode/mimo-v2.6-flash-free"]:::ambas
+  r_codex_sol["codex-sol&lt;br&gt;gpt-6.1-sol"]:::ambas
+  r_agy_flash["agy-flash&lt;br&gt;gemini-3.8-flash-medium"]:::ambas
+  r_agy_flash_high["agy-flash-high&lt;br&gt;gemini-3.8-flash-high"]:::ambas
+  r_agy_opus["agy-opus&lt;br&gt;claude-opus-4-6-thinking"]:::ambas
+  r_chatgpt_web["chatgpt-web&lt;br&gt;web"]:::portatil
+  r_gemini_web["gemini-web&lt;br&gt;web"]:::portatil
+  r_copilot_web["copilot-web&lt;br&gt;web"]:::portatil
+  r_deepseek_web["deepseek-web&lt;br&gt;web"]:::portatil
+  c_claude_pro{{"claude-pro&lt;br&gt;claude"}}:::fuera
+  c_claude_team{{"claude-team&lt;br&gt;claude"}}:::fuera
+  c_opencode{{"opencode&lt;br&gt;opencode"}}:::fuera
+  c_codex{{"codex&lt;br&gt;codex"}}:::fuera
+  c_antigravity{{"antigravity&lt;br&gt;agy"}}:::fuera
+  c_antigravity_claude{{"antigravity-claude&lt;br&gt;agy"}}:::fuera
+  c_chatgpt{{"chatgpt&lt;br&gt;web"}}:::fuera
+  c_gemini_web{{"gemini-web&lt;br&gt;web"}}:::fuera
+  c_copilot_web{{"copilot-web&lt;br&gt;web"}}:::fuera
+  c_deepseek_web{{"deepseek-web&lt;br&gt;web"}}:::fuera
+  a_alto --&gt;|"1"| r_claude_pro_opus
+  a_alto --&gt;|"2"| r_claude_team_opus
+  a_alto --&gt;|"3"| r_agy_opus
+  a_medio --&gt;|"1"| r_agy_flash_high
+  a_medio --&gt;|"2"| r_codex_sol
+  a_medio --&gt;|"3"| r_claude_pro_haiku
+  a_bajo --&gt;|"1"| r_agy_flash
+  a_bajo --&gt;|"2"| r_claude_pro_haiku
+  a_bajo --&gt;|"3"| r_claude_team_haiku
+  a_bajo --&gt;|"4"| r_opencode_beam
+  a_gratis --&gt;|"1"| r_opencode_beam
+  a_gratis --&gt;|"2"| r_opencode_mimo
+  a_revisor --&gt;|"1"| r_codex_sol
+  a_revisor --&gt;|"2"| r_claude_team_opus
+  a_revisor --&gt;|"3"| r_claude_pro_opus
+  a_juez --&gt;|"1"| r_claude_pro_opus
+  a_juez --&gt;|"2"| r_claude_team_opus
+  a_juez --&gt;|"3"| r_codex_sol
+  a_juez --&gt;|"4"| r_agy_opus
+  a_juez --&gt;|"5"| r_gemini_web
+  a_juez --&gt;|"6"| r_chatgpt_web
+  a_juez --&gt;|"7"| r_copilot_web
+  a_verificador --&gt;|"1"| r_claude_pro_opus
+  a_verificador --&gt;|"2"| r_claude_team_opus
+  a_verificador --&gt;|"3"| r_agy_opus
+  a_verificador_confianza --&gt;|"1"| r_codex_sol
+  a_verificador_confianza --&gt;|"2"| r_claude_pro_opus
+  a_verificador_confianza --&gt;|"3"| r_claude_team_opus
+  a_verificador_confianza --&gt;|"4"| r_agy_opus
+  r_claude_pro_opus --&gt; c_claude_pro
+  r_claude_team_opus --&gt; c_claude_team
+  r_claude_pro_haiku --&gt; c_claude_pro
+  r_claude_team_haiku --&gt; c_claude_team
+  r_opencode_beam --&gt; c_opencode
+  r_opencode_mimo --&gt; c_opencode
+  r_codex_sol --&gt; c_codex
+  r_agy_flash --&gt; c_antigravity
+  r_agy_flash_high --&gt; c_antigravity
+  r_agy_opus --&gt; c_antigravity_claude
+  r_chatgpt_web --&gt; c_chatgpt
+  r_gemini_web --&gt; c_gemini_web
+  r_copilot_web --&gt; c_copilot_web
+  r_deepseek_web --&gt; c_deepseek_web
+  classDef tu fill:#fff1b8,stroke:#9a7b00,color:#3d3000
+  classDef portatil fill:#dbe8fb,stroke:#2f62b3,color:#0f2a55
+  classDef vps fill:#fde3c8,stroke:#b8620b,color:#4a2600
+  classDef ambas fill:#d5ecee,stroke:#2f7f88,color:#0f3337
+  classDef actions fill:#ebdffb,stroke:#6b3fb3,color:#2b1250
+  classDef github fill:#d9f0dc,stroke:#2e7d43,color:#123d1d
+  classDef fuera fill:#ececee,stroke:#6b6b74,color:#222226
+  classDef si fill:#d9f0dc,stroke:#2e7d43,color:#123d1d
+  classDef no fill:#fbe0de,stroke:#b3423b,color:#4a1210</pre></div><figcaption>Catálogo</figcaption></figure><details><summary>Las 14 rutas</summary><div class="tabla"><table><thead><tr><th class="l">Ruta</th><th class="l">CLI</th><th class="l">Cuenta</th><th class="l">Modelo</th><th class="l">Esfuerzos</th><th class="l">Herramientas</th><th class="l">Cobro</th><th class="l">Dónde</th><th class="l">Roles</th><th class="l">En los alias</th></tr></thead><tbody><tr><td class="l"><code>claude-pro-opus</code></td><td class="l"><code>claude</code></td><td class="l"><code>claude-pro</code></td><td class="l"><code>opus</code></td><td class="l">low, medium, high, xhigh, max</td><td class="l">ninguna, lectura, edicion, todas</td><td class="l">suscripcion</td><td class="l">local, vps</td><td class="l">diseñar, revisar, sintetizar</td><td class="l">alto, revisor, juez, verificador, verificador_confianza</td></tr><tr><td class="l"><code>claude-team-opus</code></td><td class="l"><code>claude</code></td><td class="l"><code>claude-team</code></td><td class="l"><code>opus</code></td><td class="l">low, medium, high, xhigh, max</td><td class="l">ninguna, lectura, edicion, todas</td><td class="l">suscripcion</td><td class="l">local, vps</td><td class="l">diseñar, revisar, sintetizar</td><td class="l">alto, revisor, juez, verificador, verificador_confianza</td></tr><tr><td class="l"><code>claude-pro-haiku</code></td><td class="l"><code>claude</code></td><td class="l"><code>claude-pro</code></td><td class="l"><code>haiku</code></td><td class="l">—</td><td class="l">ninguna, lectura, edicion, todas</td><td class="l">suscripcion</td><td class="l">local, vps</td><td class="l">resumir, clasificar</td><td class="l">medio, bajo</td></tr><tr><td class="l"><code>claude-team-haiku</code></td><td class="l"><code>claude</code></td><td class="l"><code>claude-team</code></td><td class="l"><code>haiku</code></td><td class="l">—</td><td class="l">ninguna, lectura, edicion, todas</td><td class="l">suscripcion</td><td class="l">local, vps</td><td class="l">resumir, clasificar</td><td class="l">bajo</td></tr><tr><td class="l"><code>opencode-beam</code></td><td class="l"><code>opencode</code></td><td class="l"><code>opencode</code></td><td class="l"><code>opencode/beam-free</code></td><td class="l">—</td><td class="l">ninguna</td><td class="l">gratis</td><td class="l">local, vps</td><td class="l">investigar, resumir</td><td class="l">bajo, gratis</td></tr><tr><td class="l"><code>opencode-mimo</code></td><td class="l"><code>opencode</code></td><td class="l"><code>opencode</code></td><td class="l"><code>opencode/mimo-v2.6-flash-free</code></td><td class="l">—</td><td class="l">ninguna</td><td class="l">gratis</td><td class="l">local, vps</td><td class="l">investigar, resumir</td><td class="l">gratis</td></tr><tr><td class="l"><code>codex-sol</code></td><td class="l"><code>codex</code></td><td class="l"><code>codex</code></td><td class="l"><code>gpt-6.1-sol</code></td><td class="l">low, medium, high, xhigh</td><td class="l">ninguna, todas</td><td class="l">suscripcion</td><td class="l">local, vps</td><td class="l">revisar, diseñar, editar</td><td class="l">medio, revisor, juez, verificador_confianza</td></tr><tr><td class="l"><code>agy-flash</code></td><td class="l"><code>agy</code></td><td class="l"><code>antigravity</code></td><td class="l"><code>gemini-3.8-flash-medium</code></td><td class="l">—</td><td class="l">ninguna, lectura, edicion</td><td class="l">suscripcion</td><td class="l">local, vps</td><td class="l">investigar, resumir, clasificar</td><td class="l">bajo</td></tr><tr><td class="l"><code>agy-flash-high</code></td><td class="l"><code>agy</code></td><td class="l"><code>antigravity</code></td><td class="l"><code>gemini-3.8-flash-high</code></td><td class="l">—</td><td class="l">ninguna, lectura, edicion</td><td class="l">suscripcion</td><td class="l">local, vps</td><td class="l">investigar, sintetizar</td><td class="l">medio</td></tr><tr><td class="l"><code>agy-opus</code></td><td class="l"><code>agy</code></td><td class="l"><code>antigravity-claude</code></td><td class="l"><code>claude-opus-4-6-thinking</code></td><td class="l">—</td><td class="l">ninguna, lectura, edicion</td><td class="l">suscripcion</td><td class="l">local, vps</td><td class="l">diseñar, revisar, sintetizar</td><td class="l">alto, juez, verificador, verificador_confianza</td></tr><tr><td class="l"><code>chatgpt-web</code></td><td class="l"><code>web</code></td><td class="l"><code>chatgpt</code></td><td class="l"><code>web</code></td><td class="l">—</td><td class="l">ninguna</td><td class="l">suscripcion</td><td class="l">local</td><td class="l">revisar, investigar</td><td class="l">juez</td></tr><tr><td class="l"><code>gemini-web</code></td><td class="l"><code>web</code></td><td class="l"><code>gemini-web</code></td><td class="l"><code>web</code></td><td class="l">—</td><td class="l">ninguna</td><td class="l">suscripcion</td><td class="l">local</td><td class="l">revisar, investigar</td><td class="l">juez</td></tr><tr><td class="l"><code>copilot-web</code></td><td class="l"><code>web</code></td><td class="l"><code>copilot-web</code></td><td class="l"><code>web</code></td><td class="l">—</td><td class="l">ninguna</td><td class="l">suscripcion</td><td class="l">local</td><td class="l">revisar, investigar</td><td class="l">juez</td></tr><tr><td class="l"><code>deepseek-web</code></td><td class="l"><code>web</code></td><td class="l"><code>deepseek-web</code></td><td class="l"><code>web</code></td><td class="l">—</td><td class="l">ninguna</td><td class="l">suscripcion</td><td class="l">local</td><td class="l">revisar, investigar</td><td class="l">—</td></tr></tbody></table></div><div class="tabla"><table><thead><tr><th class="l">CLI</th><th class="l">Cómo se lanza</th></tr></thead><tbody><tr><td class="l"><code>claude</code></td><td class="l"><code>claude -p --output-format json</code>, sin MCP (<code>--strict-mcp-config</code>) ni órdenes con barra</td></tr><tr><td class="l"><code>codex</code></td><td class="l"><code>codex exec --json --ignore-user-config</code>: sandbox read-only y sin shell, o todo con «todas»</td></tr><tr><td class="l"><code>opencode</code></td><td class="l"><code>opencode run --standalone --format json</code>, con el prompt como argumento</td></tr><tr><td class="l"><code>agy</code></td><td class="l"><code>agy --model … --output-format json</code>, con el prompt como argumento</td></tr><tr><td class="l"><code>web</code></td><td class="l">Firefox <code>--new-tab</code> y el userscript <code>web/cola-web.user.js</code> en Violentmonkey</td></tr></tbody></table></div></details></section><section id="consultas" aria-labelledby="t-consultas"><h2 id="t-consultas">Consultas</h2><p><code>cola preguntar</code> corre ya en esta máquina y espera la respuesta; <code>cola nuevo</code> deja un trabajo que corre cuando haya cuota, quizá en otra máquina. Las dos montan el prompt igual, en este orden (cada pieza solo si toca):</p><figure class="diagrama" id="d-cómo-se-monta-el-prompt" aria-label="Cómo se monta el prompt"><div class="herr"><button type="button" data-z="menos" aria-label="Alejar">−</button><button type="button" data-z="mas" aria-label="Acercar">+</button><button type="button" data-z="ajustar">Ajustar</button><button type="button" data-z="pantalla" aria-label="Pantalla completa">⛶</button></div><div class="lienzo"><pre class="mermaid">flowchart TB
+  accTitle: Cómo se monta el prompt
+  n1["nota de «todas» (y de la cuenta bot)&lt;br&gt;solo pasos con herramientas = todas"]
+  n2["plantillas/consulta.md&lt;br&gt;instrucciones completas o plantilla"]
+  n3["AGENTS.md o CLAUDE.md del repo&lt;br&gt;instrucciones completas · hasta 6 000 caracteres"]
+  n4["--contexto: índice, commit y ficheros&lt;br&gt;hasta 80 000 caracteres"]
+  n5["pasos/_contexto.md&lt;br&gt;la foto que hizo cola nuevo --contexto"]
+  n6["plantilla del paso&lt;br&gt;contrastar · revisar · depurar"]
+  n7["pasos/#lt;paso#gt;.md&lt;br&gt;la petición"]
+  n8["subconsulta del abanico"]
+  n9["salidas de los pasos que usa&lt;br&gt;y su diff si editaron"]
+  n10["instrucción del JSON (planificar)"]
+  n1 --&gt; n2 --&gt; n3 --&gt; n4 --&gt; n5 --&gt; n6 --&gt; n7 --&gt; n8 --&gt; n9 --&gt; n10
+  classDef tu fill:#fff1b8,stroke:#9a7b00,color:#3d3000
+  classDef portatil fill:#dbe8fb,stroke:#2f62b3,color:#0f2a55
+  classDef vps fill:#fde3c8,stroke:#b8620b,color:#4a2600
+  classDef ambas fill:#d5ecee,stroke:#2f7f88,color:#0f3337
+  classDef actions fill:#ebdffb,stroke:#6b3fb3,color:#2b1250
+  classDef github fill:#d9f0dc,stroke:#2e7d43,color:#123d1d
+  classDef fuera fill:#ececee,stroke:#6b6b74,color:#222226
+  classDef si fill:#d9f0dc,stroke:#2e7d43,color:#123d1d
+  classDef no fill:#fbe0de,stroke:#b3423b,color:#4a1210</pre></div><figcaption>Cómo se monta el prompt</figcaption></figure><div class="tabla"><table><thead><tr><th class="l">instrucciones</th><th class="l">Qué va delante</th></tr></thead><tbody><tr><td class="l"><code>auto</code></td><td class="l"><code>completas</code> si el paso lleva contexto; si no, <code>ninguna</code>, para que las consultas ligeras no paguen nada</td></tr><tr><td class="l"><code>completas</code></td><td class="l"><code>plantillas/consulta.md</code> y el <code>AGENTS.md</code> o <code>CLAUDE.md</code> del repo, recortado</td></tr><tr><td class="l"><code>plantilla</code></td><td class="l">solo <code>plantillas/consulta.md</code></td></tr><tr><td class="l"><code>ninguna</code></td><td class="l">nada</td></tr><tr><td class="l">con herramientas</td><td class="l">nada: el CLI ya lee el repo y su <code>AGENTS.md</code></td></tr></tbody></table></div><figure class="diagrama" id="d-segunda-opinión-con-cola-preguntar---contrastar" aria-label="Segunda opinión con cola preguntar --contrastar"><div class="herr"><button type="button" data-z="menos" aria-label="Alejar">−</button><button type="button" data-z="mas" aria-label="Acercar">+</button><button type="button" data-z="ajustar">Ajustar</button><button type="button" data-z="pantalla" aria-label="Pantalla completa">⛶</button></div><div class="lienzo"><pre class="mermaid">sequenceDiagram
+  actor tu as Tú
+  participant Q as cola preguntar
+  participant A as modelo 1
+  participant B as modelo 2
+  participant J as quien contrasta
+  tu-&gt;&gt;Q: --modelo A --modelo B --contrastar J --contexto …
+  Q-&gt;&gt;Q: delante: consulta.md, AGENTS.md y la foto del repo actual
+  Q-&gt;&gt;Q: rutas distintas con cuota y prioridad alta, y que cada prompt cabe
+  par a la vez
+    Q-&gt;&gt;A: prompt
+  and al mismo tiempo
+    Q-&gt;&gt;B: prompt
+  end
+  A--&gt;&gt;Q: respuesta 1, guardada en ~/.cache/cola/consultas/
+  B--&gt;&gt;Q: respuesta 2
+  Q-&gt;&gt;J: plantilla contrastar, petición original y respuestas numeradas, sin decir de quién
+  J--&gt;&gt;Q: coincidencias, discrepancias, errores y respuesta final
+  Q--&gt;&gt;tu: el contraste por la salida estándar y dónde quedó cada respuesta por la de error
+  Q-&gt;&gt;Q: registro/ y bloqueos/, y commit de cola-datos si no hay un tic en marcha</pre></div><figcaption>Segunda opinión con cola preguntar --contrastar</figcaption></figure><figure class="diagrama" id="d-pasos-de---contrastar-y---revisar-en-cola-nuevo" aria-label="Pasos de --contrastar y --revisar en cola nuevo"><div class="herr"><button type="button" data-z="menos" aria-label="Alejar">−</button><button type="button" data-z="mas" aria-label="Acercar">+</button><button type="button" data-z="ajustar">Ajustar</button><button type="button" data-z="pantalla" aria-label="Pantalla completa">⛶</button></div><div class="lienzo"><pre class="mermaid">flowchart LR
+  accTitle: Pasos de --contrastar y --revisar
+  subgraph sg_c["cola nuevo --modelo A --modelo B --contrastar J"]
+    c1["p1 · A"] --&gt; cc["contraste · J&lt;br&gt;tipo sintetizar&lt;br&gt;plantilla contrastar"]
+    c2["p2 · B"] --&gt; cc
+  end
+  subgraph sg_r["cola nuevo --modelo A --revisar R"]
+    r1["p1 · A"] --&gt; rr["revision · R&lt;br&gt;tipo revisar&lt;br&gt;APROBADO o CAMBIOS"]
+  end
+  classDef tu fill:#fff1b8,stroke:#9a7b00,color:#3d3000
+  classDef portatil fill:#dbe8fb,stroke:#2f62b3,color:#0f2a55
+  classDef vps fill:#fde3c8,stroke:#b8620b,color:#4a2600
+  classDef ambas fill:#d5ecee,stroke:#2f7f88,color:#0f3337
+  classDef actions fill:#ebdffb,stroke:#6b3fb3,color:#2b1250
+  classDef github fill:#d9f0dc,stroke:#2e7d43,color:#123d1d
+  classDef fuera fill:#ececee,stroke:#6b6b74,color:#222226
+  classDef si fill:#d9f0dc,stroke:#2e7d43,color:#123d1d
+  classDef no fill:#fbe0de,stroke:#b3423b,color:#4a1210</pre></div><figcaption>Pasos de --contrastar y --revisar en cola nuevo</figcaption></figure><div class="tabla"><table><thead><tr><th class="l"></th><th class="l"><code>cola preguntar</code></th><th class="l"><code>cola nuevo</code></th></tr></thead><tbody><tr><td class="l">Cuándo corre</td><td class="l">ya, en esta máquina</td><td class="l">cuando un tic lo coja y haya cuota</td></tr><tr><td class="l">Prioridad</td><td class="l">alta</td><td class="l">la del trabajo</td></tr><tr><td class="l">Aprobación</td><td class="l">no hace falta: lo que manda está acotado a <code>--contexto</code></td><td class="l">desde una terminal, aprobado; desde un agente, <code>cola aprobar</code></td></tr><tr><td class="l">Varios modelos</td><td class="l">a la vez, y el contraste al final</td><td class="l">pasos <code>p1</code>…<code>pN</code> y <code>contraste</code>, uno por tic</td></tr><tr><td class="l">Revisión</td><td class="l">—</td><td class="l"><code>--revisar MODELO</code>: paso <code>revision</code></td></tr><tr><td class="l">Herramientas</td><td class="l">nunca</td><td class="l"><code>--herramientas</code>, en el VPS</td></tr><tr><td class="l">Respuesta</td><td class="l">salida estándar y <code>~/.cache/cola/consultas/</code></td><td class="l"><code>salidas/</code> (<code>cola ver &lt;id&gt; --salidas</code>)</td></tr><tr><td class="l">Si una web no cabe</td><td class="l">falla antes de abrir ninguna</td><td class="l">falla al crear el trabajo, no al correr</td></tr></tbody></table></div><p>Topes del prompt: <code>--contexto</code> hasta 80 000 caracteres; una web admite 100 000 en total, y si contrasta o revisa se guardan 20 000 por respuesta que juzga. El de <code>cola revisar</code> recorta el diff según la ruta que lo lea: 100 000 a una web, 90 000 a agy u OpenCode (argumento) y 300 000 a Claude o Codex (stdin).</p></section><section id="webs" aria-labelledby="t-webs"><h2 id="t-webs">Webs por el navegador</h2><p>Rutas <code>chatgpt-web</code>, <code>gemini-web</code>, <code>copilot-web</code> y <code>deepseek-web</code>: solo en el portátil, con Firefox abierto. El prompt no viaja en la URL: la pestaña solo lleva el puerto y una clave tras <code>#</code>, que el navegador no manda a la web. Las pestañas escriben de una en una y esperan su respuesta a la vez.</p><figure class="diagrama" id="d-una-consulta-a-una-web" aria-label="Una consulta a una web"><div class="herr"><button type="button" data-z="menos" aria-label="Alejar">−</button><button type="button" data-z="mas" aria-label="Acercar">+</button><button type="button" data-z="ajustar">Ajustar</button><button type="button" data-z="pantalla" aria-label="Pantalla completa">⛶</button></div><div class="lienzo"><pre class="mermaid">sequenceDiagram
+  participant C as cola (adaptadores.py)
+  participant L as escuchador 127.0.0.1
+  participant F as Firefox
+  participant U as userscript cola-web 1.30
+  participant W as la web (ChatGPT, Gemini, Copilot o DeepSeek)
+  C-&gt;&gt;C: espera el turno de envío (flock en web-envio.lock)
+  C-&gt;&gt;L: abre un puerto libre con una clave de un solo uso
+  C-&gt;&gt;F: firefox -P perfil --new-tab URL#35;cola=puerto:clave
+  F-&gt;&gt;U: carga la web y el userscript ve el #35;cola
+  U-&gt;&gt;L: GET /prompt con la clave (una sola vez)
+  L--&gt;&gt;U: el prompt (hasta 100 000 caracteres)
+  U-&gt;&gt;W: lo escribe
+  U-&gt;&gt;L: POST /respuesta con la fase «enviando», justo antes del clic
+  U-&gt;&gt;W: pulsa enviar
+  U-&gt;&gt;L: POST /respuesta con la fase «enviado»
+  L--&gt;&gt;C: suelta el turno (como mucho a los 90 s)
+  loop mientras la web genera
+    U-&gt;&gt;L: latido cada 30 s
+  end
+  W--&gt;&gt;U: respuesta terminada
+  U-&gt;&gt;L: POST /respuesta con el texto y la sonda
+  L--&gt;&gt;C: la respuesta
+  Note over C,L: sin noticias en 5 min, se corta. Si no llegó a enviar, se reintenta una vez en otra pestaña.
+  Note over U,W: con --atendido, si se atasca pone «⚠ cola: entra aquí» en el título y avisa con notify-send</pre></div><figcaption>Una consulta a una web</figcaption></figure><ul><li>Si una web cambia su HTML, el userscript devuelve un error con diagnóstico y deja una <strong>sonda</strong> en <code>~/.cache/cola/sondas/</code> (qué casa con cada selector, el HTML de la respuesta y del cuadro, y cuándo pasó cada fase). <code>cola web-prueba</code> manda una respuesta conocida a cada web y dice si se leyó bien.</li><li>Reintento: solo si la pestaña pidió el prompt pero no avisó «enviando» (justo antes del clic) y quedan al menos 1 min. Después de enviar no se repite: sería pagar dos veces.</li><li><code>cola preguntar</code> espera a una web al menos 60 min; los latidos permiten cortar antes si la pestaña se cae.</li><li>Sin ventana (#36): con <code>[chatgpt] sin_ventana = "perfil"</code>, cada consulta abre una ventana en un Firefox headless de ese perfil, que lanza la primera y sigue corriendo; las ventanas no se frenan como las pestañas ocultas y el userscript las cierra al acabar. <code>--atendido</code> va al perfil de siempre.</li><li><code>cola web-instalar</code> abre el userscript del árbol desde el que se lanza, para instalarlo o probar una rama en Violentmonkey (<code>--sin-ventana</code>: en el perfil sin ventana, cerrando antes su Firefox headless). <code>web/sin_ventana.py html|prueba RUTA</code> abre la web en un Firefox sin ventana con una copia de la sesión: saca el HTML o corre el userscript con la prueba de <code>web-prueba</code> (no vale para Copilot).</li><li><code>chatgpt/chatgpt-cola.user.js</code> (2.4) queda solo para <code>chatgpt -y</code> desde la terminal.</li></ul></section><section id="vps" aria-labelledby="t-vps"><h2 id="t-vps">Agentes en el VPS</h2><p>Para dejarle una tarea a Claude o a Codex con el repo delante, sin mandar contexto. Solo viaja lo que tiene commit. El VPS no tiene ninguna credencial de tu cuenta de GitHub; si tiene la de la cuenta bot, el agente puede correr sus propios workflows en la copia del repo que hay allí.</p><figure class="diagrama" id="d-un-agente-en-el-vps" aria-label="Un agente en el VPS"><div class="herr"><button type="button" data-z="menos" aria-label="Alejar">−</button><button type="button" data-z="mas" aria-label="Acercar">+</button><button type="button" data-z="ajustar">Ajustar</button><button type="button" data-z="pantalla" aria-label="Pantalla completa">⛶</button></div><div class="lienzo"><pre class="mermaid">sequenceDiagram
+  actor tu as Tú
+  participant R as tu repo (portátil)
+  participant B as /home/cola/repos/#lt;nombre#gt;.git
+  participant D as cola-datos
+  participant T as tic en vps
+  participant A as agente (Claude o Codex)
+  participant G as cuenta bot/#lt;nombre#gt;
+  tu-&gt;&gt;R: cola vps-alta [--github privado o publico], una vez por repo
+  R-&gt;&gt;B: ssh: git init --bare y remoto «vps»
+  R--&gt;&gt;G: con --github, ssh y gh repo create como la cuenta bot
+  tu-&gt;&gt;R: cola nuevo "…" --herramientas todas
+  R-&gt;&gt;B: push de HEAD a cola/#lt;id#gt; (solo lo que tiene commit)
+  R-&gt;&gt;D: trabajo con donde = vps, repo = el bare, base = ese commit
+  T-&gt;&gt;D: pull y elige el paso
+  T-&gt;&gt;T: clona en ~/.cache/cola/arboles/#lt;id#gt; con el .git en ~/.cache/cola/git/#lt;id#gt;
+  T-&gt;&gt;A: nota de «todas» y prompt, CLI completo sin pedir permiso
+  opt si vps tiene cuenta bot
+    A-&gt;&gt;G: push de cola/#lt;id#gt;, workflows con on push cola/**, gh run watch
+  end
+  A--&gt;&gt;T: termina, quizá con commits propios
+  T-&gt;&gt;B: commit de lo que quede y push de cola/#lt;id#gt;, el diff a salidas/
+  T-&gt;&gt;D: estado, salidas y registro, push
+  tu-&gt;&gt;R: git fetch vps y git log -p HEAD..vps/cola/#lt;id#gt;</pre></div><figcaption>Un agente en el VPS</figcaption></figure><div class="tabla"><table><thead><tr><th class="l">--herramientas</th><th class="l">Quién</th><th class="l">Qué puede hacer</th></tr></thead><tbody><tr><td class="l"><code>lectura</code></td><td class="l">Claude</td><td class="l">Read, Grep, Glob en el clon, sin shell</td></tr><tr><td class="l"><code>edicion</code></td><td class="l">Claude</td><td class="l">además edita; commit y push los hace la cola (nunca main, nunca <code>--force</code>)</td></tr><tr><td class="l"><code>todas</code></td><td class="l">Claude o Codex, solo con <code>shell = true</code></td><td class="l">el CLI completo: shell, tests, red y el git del clon, durante el tiempo del paso (hasta 300 min con <code>--tiempo-max</code>)</td></tr></tbody></table></div><p>Para poner el código al día después de fusionar en <code>main</code>, sin cortar un tic a medias. <code>cola actualizar</code> lo hace en las dos máquinas, una detrás de otra: si una falla, la otra sigue y avisa del desfase; si cambió la <code>@version</code> del userscript, avisa de que hay que lanzar <code>cola web-instalar</code>:</p><figure class="diagrama" id="d-cola-actualizar-y-cola-vps-actualizar" aria-label="cola actualizar y cola vps-actualizar"><div class="herr"><button type="button" data-z="menos" aria-label="Alejar">−</button><button type="button" data-z="mas" aria-label="Acercar">+</button><button type="button" data-z="ajustar">Ajustar</button><button type="button" data-z="pantalla" aria-label="Pantalla completa">⛶</button></div><div class="lienzo"><pre class="mermaid">flowchart LR
+  accTitle: cola actualizar y cola vps-actualizar
+  a["cola actualizar: el VPS por ssh&lt;br&gt;y luego la instalación de aquí&lt;br&gt;(cola vps-actualizar: solo el VPS)"]:::portatil --&gt; b{"coge tic.lock&lt;br&gt;(espera hasta 10 min)"}:::vps
+  b --&gt;|"hay un tic largo"| x1["sale: prueba luego"]:::no
+  b --&gt; g{"¿en main y sin&lt;br&gt;cambios sin commit?"}:::vps
+  g --&gt;|"no"| x4["sale sin tocar nada"]:::no
+  g --&gt; c["git fetch y merge --ff-only origin/main"]:::vps
+  c --&gt;|"no es avance directo"| x2["sale sin tocar nada"]:::no
+  c --&gt; d{"¿importa el código nuevo?"}:::vps
+  d --&gt;|"no"| x3["vuelve al commit de antes"]:::no
+  d --&gt;|"sí"| e["daemon-reload si cambió systemd/"]:::si
+  classDef tu fill:#fff1b8,stroke:#9a7b00,color:#3d3000
+  classDef portatil fill:#dbe8fb,stroke:#2f62b3,color:#0f2a55
+  classDef vps fill:#fde3c8,stroke:#b8620b,color:#4a2600
+  classDef ambas fill:#d5ecee,stroke:#2f7f88,color:#0f3337
+  classDef actions fill:#ebdffb,stroke:#6b3fb3,color:#2b1250
+  classDef github fill:#d9f0dc,stroke:#2e7d43,color:#123d1d
+  classDef fuera fill:#ececee,stroke:#6b6b74,color:#222226
+  classDef si fill:#d9f0dc,stroke:#2e7d43,color:#123d1d
+  classDef no fill:#fbe0de,stroke:#b3423b,color:#4a1210</pre></div><figcaption>cola actualizar y cola vps-actualizar</figcaption></figure></section><section id="actions" aria-labelledby="t-actions"><h2 id="t-actions">GitHub Actions</h2><p>Para órdenes de shell (<code>cola nuevo --comando "pytest -q"</code>), que nunca corren en el portátil ni en el VPS. Un paso por vuelta, en tres jobs; solo <code>aplicar</code> escribe, y no ejecuta nada del trabajo. Cada paso corre en un runner nuevo: lo que necesite del anterior va en un solo comando.</p><figure class="diagrama" id="d-github-actions" aria-label="GitHub Actions"><div class="herr"><button type="button" data-z="menos" aria-label="Alejar">−</button><button type="button" data-z="mas" aria-label="Acercar">+</button><button type="button" data-z="ajustar">Ajustar</button><button type="button" data-z="pantalla" aria-label="Pantalla completa">⛶</button></div><div class="lienzo"><pre class="mermaid">flowchart LR
+  accTitle: GitHub Actions
+  disp["push a main que cambia&lt;br&gt;actions/pendientes.txt"]:::github
+  man["workflow_dispatch&lt;br&gt;a mano o relanzado"]:::github
+  subgraph sg_w["workflow cola en thendabs1/cola-datos"]
+    plan{{"plan · contents: read&lt;br&gt;checkout de cola-datos y del código con COLA_CODIGO&lt;br&gt;cola.py plan-actions: paso, huella, rev y commit"}}:::actions
+    ej{{"ejecutar · sin permisos ni secretos&lt;br&gt;clona el repo del trabajo sin credenciales&lt;br&gt;corre el comando, como mucho 55 min"}}:::actions
+    ap{{"aplicar · contents y actions: write&lt;br&gt;valida el artefacto y que el paso sigue igual&lt;br&gt;cola.py aplicar-comando y commit"}}:::actions
+  end
+  disp --&gt; plan
+  man --&gt; plan
+  plan --&gt;|"plan"| ej
+  ej --&gt;|"artefacto: rc y salida.txt"| ap
+  plan --&gt;|"plan"| ap
+  ap --&gt; datos[("cola-datos&lt;br&gt;salidas/ y estado.json")]:::github
+  ap -.-&gt;|"quedan pasos: gh workflow run&lt;br&gt;hasta 20 vueltas seguidas"| man
+  classDef tu fill:#fff1b8,stroke:#9a7b00,color:#3d3000
+  classDef portatil fill:#dbe8fb,stroke:#2f62b3,color:#0f2a55
+  classDef vps fill:#fde3c8,stroke:#b8620b,color:#4a2600
+  classDef ambas fill:#d5ecee,stroke:#2f7f88,color:#0f3337
+  classDef actions fill:#ebdffb,stroke:#6b3fb3,color:#2b1250
+  classDef github fill:#d9f0dc,stroke:#2e7d43,color:#123d1d
+  classDef fuera fill:#ececee,stroke:#6b6b74,color:#222226
+  classDef si fill:#d9f0dc,stroke:#2e7d43,color:#123d1d
+  classDef no fill:#fbe0de,stroke:#b3423b,color:#4a1210</pre></div><figcaption>GitHub Actions</figcaption></figure><p>Disparadores (leídos del workflow): <code>push</code>, <code>workflow_dispatch</code>. El repo del trabajo ha de ser una URL <code>https://</code> pública y <code>base</code> una rama, una etiqueta o un commit de 40 caracteres.</p></section><section id="estado" aria-labelledby="t-estado"><h2 id="t-estado">Estado compartido</h2><p>Cada fichero de cola-datos tiene un solo tipo de escritor, para que no se pierdan órdenes ni se ejecute un paso dos veces. Los que dos máquinas pueden tocar a la vez los fusiona git con <code>cola.py fusionar</code>: en un paso gana el <code>rev</code> mayor, dos reclamaciones a la vez son un conflicto (pierde la que publica después) y, entre dos órdenes, gana la prudente.</p><figure class="diagrama" id="d-quién-escribe-qué-en-cola-datos" aria-label="Quién escribe qué en cola-datos"><div class="herr"><button type="button" data-z="menos" aria-label="Alejar">−</button><button type="button" data-z="mas" aria-label="Acercar">+</button><button type="button" data-z="ajustar">Ajustar</button><button type="button" data-z="pantalla" aria-label="Pantalla completa">⛶</button></div><div class="lienzo"><pre class="mermaid">flowchart LR
+  accTitle: Quién escribe qué en cola-datos
+  tu(["tú"]):::tu
+  ag["un agente&lt;br&gt;cola nuevo"]:::portatil
+  maq["cada máquina&lt;br&gt;en su tic"]:::ambas
+  wf{{"workflow cola"}}:::actions
+  config[("config.toml")]
+  ttoml[("trabajos/#lt;id#gt;/&lt;br&gt;trabajo.toml y pasos/")]
+  control[("control.json")]
+  estado[("estado.json")]
+  salidas[("salidas/")]
+  porm[("esperas/ · cuotas/ · bloqueos/ · registro/&lt;br&gt;un fichero por máquina")]
+  pend[("actions/pendientes.txt")]
+  tu --&gt;|"a mano"| config
+  tu --&gt;|"cola nuevo"| ttoml
+  ag --&gt;|"sin aprobar"| ttoml
+  tu --&gt;|"aprobar · pausar · cancelar"| control
+  tu --&gt;|"reintentar"| estado
+  maq --&gt;|"el dueño del paso"| estado
+  maq --&gt; salidas
+  maq --&gt; porm
+  maq --&gt;|"al hacer commit"| pend
+  pend -.-&gt;|"dispara"| wf
+  wf --&gt;|"aplicar-comando"| estado
+  wf --&gt; salidas
+  classDef tu fill:#fff1b8,stroke:#9a7b00,color:#3d3000
+  classDef portatil fill:#dbe8fb,stroke:#2f62b3,color:#0f2a55
+  classDef vps fill:#fde3c8,stroke:#b8620b,color:#4a2600
+  classDef ambas fill:#d5ecee,stroke:#2f7f88,color:#0f3337
+  classDef actions fill:#ebdffb,stroke:#6b3fb3,color:#2b1250
+  classDef github fill:#d9f0dc,stroke:#2e7d43,color:#123d1d
+  classDef fuera fill:#ececee,stroke:#6b6b74,color:#222226
+  classDef si fill:#d9f0dc,stroke:#2e7d43,color:#123d1d
+  classDef no fill:#fbe0de,stroke:#b3423b,color:#4a1210</pre></div><figcaption>Quién escribe qué en cola-datos</figcaption></figure><div class="tabla"><table><thead><tr><th class="l">En <code>~/cola-datos</code></th><th class="l">Lo escribe</th><th class="l">Para qué</th><th class="l">Al fusionar</th></tr></thead><tbody><tr><td class="l"><code>config.toml</code></td><td class="l">tú, a mano</td><td class="l">reservas, tope diario, ventana de relleno y <code>sin_lectura</code> por cuenta; tiempo máximo por paso</td><td class="l">git, sin más</td></tr><tr><td class="l"><code>trabajos/&lt;id&gt;/trabajo.toml</code></td><td class="l"><code>cola nuevo</code> (tú o un agente) o a mano</td><td class="l">el trabajo y sus pasos; su huella es lo que apruebas</td><td class="l">git, sin más</td></tr><tr><td class="l"><code>trabajos/&lt;id&gt;/pasos/</code></td><td class="l"><code>cola nuevo</code> o a mano</td><td class="l">el prompt de cada paso; <code>_contexto.md</code>, la foto de <code>--contexto</code></td><td class="l">git, sin más</td></tr><tr><td class="l"><code>trabajos/&lt;id&gt;/control.json</code></td><td class="l">tus órdenes: aprobar, pausar, cancelar (el tic, nunca)</td><td class="l">si el trabajo puede correr</td><td class="l"><code>cola.py fusionar</code></td></tr><tr><td class="l"><code>trabajos/&lt;id&gt;/estado.json</code></td><td class="l">la máquina dueña de cada paso, que sube su <code>rev</code>; <code>cola reintentar</code></td><td class="l">estado, ruta, máquina, intentos, gasto y rama de cada paso</td><td class="l"><code>cola.py fusionar</code></td></tr><tr><td class="l"><code>trabajos/&lt;id&gt;/salidas/</code></td><td class="l">la máquina que ejecutó el paso</td><td class="l">respuestas; <code>.diff</code> de los pasos que editan; <code>.json</code> del plan</td><td class="l">git, sin más</td></tr><tr><td class="l"><code>esperas/&lt;máquina&gt;.json</code></td><td class="l">cada máquina, la suya</td><td class="l">por qué y hasta cuándo espera allí un paso</td><td class="l">un fichero por máquina</td></tr><tr><td class="l"><code>codigo/&lt;máquina&gt;.json</code></td><td class="l">el tic de cada máquina, al empezar, si cambió</td><td class="l">el commit del código que corre y si tiene cambios sin commit: <code>cola estado</code> y <code>cola seguir</code> avisan si no coinciden (#13)</td><td class="l">un fichero por máquina</td></tr><tr><td class="l"><code>cuotas/&lt;máquina&gt;.json</code></td><td class="l">cada máquina que sabe leer una cuota</td><td class="l">la cuota de Claude, Codex y agy para las que no saben</td><td class="l">un fichero por máquina</td></tr><tr><td class="l"><code>cuotas/historial/&lt;día&gt;-&lt;máquina&gt;.jsonl</code></td><td class="l">cada máquina que sabe leer una cuota, al cambiar la lectura</td><td class="l">la historia de las cuotas de Claude, Codex y agy (#101)</td><td class="l">un fichero por máquina</td></tr><tr><td class="l"><code>bloqueos/&lt;máquina&gt;.json</code></td><td class="l">cada máquina, la suya</td><td class="l">cuentas que dieron un límite: hasta cuándo, y si se levantó</td><td class="l">un fichero por máquina</td></tr><tr><td class="l"><code>registro/&lt;día&gt;-&lt;máquina&gt;.jsonl</code></td><td class="l">cada máquina, la suya</td><td class="l">una línea por llamada: ruta, resultado, gasto, duración, cuota antes y después</td><td class="l">un fichero por máquina</td></tr><tr><td class="l"><code>afirmaciones/&lt;día&gt;-&lt;máquina&gt;.jsonl</code></td><td class="l">cada máquina, la suya (<code>cola revisar</code> de un PR)</td><td class="l">una línea por revisión y otra por hallazgo, con lo comprobado (#55)</td><td class="l">un fichero por máquina</td></tr><tr><td class="l"><code>actions/pendientes.txt</code></td><td class="l">la cola al hacer commit, si cambia la lista</td><td class="l">dispara el workflow cola</td><td class="l"><code>cola.py fusionar</code></td></tr><tr><td class="l"><code>trabajos/&lt;id&gt;/bench.json</code></td><td class="l"><code>bench/bench.py montar</code></td><td class="l">de qué caso, versión y brazo es un trabajo de la batería (#85)</td><td class="l">git, sin más</td></tr><tr><td class="l"><code>bench/&lt;día&gt;-&lt;máquina&gt;.jsonl</code></td><td class="l"><code>bench/bench.py puntuar</code></td><td class="l">una línea por vuelta de la batería: cada fase con su gasto acumulado y su acierto contra el oro (#85)</td><td class="l">un fichero por máquina</td></tr></tbody></table></div><div class="tabla"><table><thead><tr><th class="l">En <code>~/.cache/cola</code>, en cada máquina</th><th class="l">Para qué</th></tr></thead><tbody><tr><td class="l"><code>tic.lock</code></td><td class="l">cerrojo: un tic a la vez (<code>actualizar</code> y <code>vps-actualizar</code> también lo cogen)</td></tr><tr><td class="l"><code>web-envio.lock</code></td><td class="l">turno de envío de las webs: una pestaña escribe a la vez</td></tr><tr><td class="l"><code>firefox-sin-ventana.lock</code></td><td class="l">que dos consultas no lancen a la vez el Firefox sin ventana (#36)</td></tr><tr><td class="l"><code>cuotas.json</code></td><td class="l">caché de las lecturas de cuota (10 min)</td></tr><tr><td class="l"><code>publicar-cuotas.lock</code></td><td class="l">cerrojo: publicar en <code>cuotas/&lt;máquina&gt;.json</code> (el tic y <code>cola cuotas</code> a la vez)</td></tr><tr><td class="l"><code>consultas</code></td><td class="l">cada consulta de <code>cola preguntar</code> entera (prompt, respuesta, la otra lectura de una web y <code>meta.json</code>); el tic borra las de más de 30 días salvo las de <code>cola conservar</code></td></tr><tr><td class="l"><code>preguntas</code></td><td class="l">respuestas de <code>cola preguntar</code> de antes de <code>consultas</code> (el tic las borra a los 30 días)</td></tr><tr><td class="l"><code>en-marcha</code></td><td class="l">un fichero por consulta que corre en esta máquina (ruta, paso, origen, sesión, pid); se borra al quedar en el registro, y uno sin terminar, al día (<code>estado --json</code>: <code>consultas_en_marcha</code>)</td></tr><tr><td class="l"><code>revisiones</code></td><td class="l">salida de cada <code>cola revisar</code> que lanza el tic por un comentario</td></tr><tr><td class="l"><code>github.json</code></td><td class="l">comentarios ya vistos por repo de <code>[revisiones] vigilar</code>, y desde cuándo mirar</td></tr><tr><td class="l"><code>github-abiertos.json</code></td><td class="l">PRs (y con la CI en rojo) e issues abiertos por repo de <code>[revisiones] vigilar</code>, para la cabecera de <code>cola seguir</code> (los cuenta el tic)</td></tr><tr><td class="l"><code>sondas</code></td><td class="l">diagnóstico del userscript cuando una web falla (o con <code>--depurar</code>)</td></tr><tr><td class="l"><code>crudo</code></td><td class="l">salida tal cual de cada CLI, por trabajo</td></tr><tr><td class="l"><code>arboles</code></td><td class="l">clones de los repos de los trabajos, en la rama <code>cola/&lt;id&gt;</code></td></tr><tr><td class="l"><code>git</code></td><td class="l">el <code>.git</code> de cada clon, fuera del árbol que ve el agente</td></tr><tr><td class="l"><code>revisadas.jsonl</code></td><td class="l">las revisiones hechas, por su huella, para no repetirlas sin <code>--repetir</code> (#52, C7); solo de esta máquina</td></tr><tr><td class="l"><code>clones</code></td><td class="l">clon parcial y sin árbol de cada repo revisado (<code>&lt;dueño&gt;/&lt;repo&gt;.git</code>), para comprobar las citas con git (#52)</td></tr><tr><td class="l"><code>vacio</code></td><td class="l">directorio vacío donde corren los pasos sin herramientas</td></tr><tr><td class="l"><code>tmp</code></td><td class="l">temporales de los CLIs</td></tr></tbody></table></div></section><section id="codigo" aria-labelledby="t-codigo"><h2 id="t-codigo">Código</h2><p>Python 3.14, solo biblioteca estándar. <code>cola.py</code> es el CLI y el planificador; los demás módulos no se importan entre sí.</p><figure class="diagrama" id="d-código" aria-label="Código"><div class="herr"><button type="button" data-z="menos" aria-label="Alejar">−</button><button type="button" data-z="mas" aria-label="Acercar">+</button><button type="button" data-z="ajustar">Ajustar</button><button type="button" data-z="pantalla" aria-label="Pantalla completa">⛶</button></div><div class="lienzo"><pre class="mermaid">flowchart LR
+  accTitle: Código
+  m_cola_py["cola.py"]:::portatil
+  m_adaptadores_py["adaptadores.py"]:::portatil
+  m_catalogo_py["catalogo.py"]:::portatil
+  m_cuotas_py["cuotas.py"]:::portatil
+  m_revisiones_py["revisiones.py"]:::portatil
+  m_afirmaciones_py["afirmaciones.py"]:::portatil
+  m_contexto_py["contexto.py"]:::portatil
+  m_red_py["red.py"]:::portatil
+  m_lotes_py["lotes.py"]:::portatil
+  m_seguir_py["seguir.py"]:::portatil
+  m_cola_py --&gt; m_adaptadores_py
+  m_cola_py --&gt; m_afirmaciones_py
+  m_cola_py --&gt; m_catalogo_py
+  m_cola_py --&gt; m_contexto_py
+  m_cola_py --&gt; m_cuotas_py
+  m_cola_py --&gt; m_lotes_py
+  m_cola_py --&gt; m_revisiones_py
+  m_cola_py --&gt; m_seguir_py
+  m_revisiones_py --&gt; m_afirmaciones_py
+  m_revisiones_py --&gt; m_contexto_py
+  m_afirmaciones_py --&gt; m_red_py
+  m_contexto_py --&gt; m_afirmaciones_py
+  m_lotes_py --&gt; m_afirmaciones_py
+  modelos[/"modelos.toml"/]
+  maquina[/"~/.config/cola/maquina.toml"/]
+  plantillas[/"plantillas/*.md"/]
+  datos[("~/cola-datos")]
+  cache[("~/.cache/cola")]
+  clis(["claude · codex · opencode · agy"]):::fuera
+  ff(["Firefox + cola-web.user.js"]):::fuera
+  apis(["endpoints de cuota"]):::fuera
+  m_catalogo_py --&gt; modelos
+  m_cola_py --&gt; maquina
+  m_cola_py --&gt; plantillas
+  m_cola_py --&gt; datos
+  m_cola_py --&gt; cache
+  m_adaptadores_py --&gt; clis
+  m_adaptadores_py --&gt; ff
+  m_cuotas_py --&gt; apis
+  classDef tu fill:#fff1b8,stroke:#9a7b00,color:#3d3000
+  classDef portatil fill:#dbe8fb,stroke:#2f62b3,color:#0f2a55
+  classDef vps fill:#fde3c8,stroke:#b8620b,color:#4a2600
+  classDef ambas fill:#d5ecee,stroke:#2f7f88,color:#0f3337
+  classDef actions fill:#ebdffb,stroke:#6b3fb3,color:#2b1250
+  classDef github fill:#d9f0dc,stroke:#2e7d43,color:#123d1d
+  classDef fuera fill:#ececee,stroke:#6b6b74,color:#222226
+  classDef si fill:#d9f0dc,stroke:#2e7d43,color:#123d1d
+  classDef no fill:#fbe0de,stroke:#b3423b,color:#4a1210</pre></div><figcaption>Código</figcaption></figure><div class="tabla"><table><thead><tr><th class="l">Orden</th><th class="l">Qué hace</th><th class="l">Desde dónde</th><th class="l">Qué toca</th></tr></thead><tbody><tr><td class="l"><code>nuevo</code></td><td class="l">prompt suelto: trabajo de un paso</td><td class="l">portátil o un agente</td><td class="l"><code>trabajos/&lt;id&gt;/</code> en cola-datos; con <code>--herramientas</code>, sube HEAD al remoto <code>vps</code></td></tr><tr><td class="l"><code>preguntar</code></td><td class="l">consulta síncrona: corre ya, sin cola, e imprime la respuesta</td><td class="l">portátil o un agente</td><td class="l"><code>registro/</code>, <code>bloqueos/</code> y <code>~/.cache/cola/consultas/</code></td></tr><tr><td class="l"><code>revisar</code></td><td class="l">revisa un issue o PR de GitHub con varios modelos (por defecto, las tres webs; un issue lo contrasta juez y en un PR, verificador verifica cada hallazgo) y, con --publicar, deja el resultado en un comentario</td><td class="l">portátil (a mano, o el tic por un comentario «/cola revisar»)</td><td class="l">como <code>preguntar</code>; con <code>--publicar</code>, un comentario en el issue o PR con el <code>gh</code> del portátil</td></tr><tr><td class="l"><code>web-prueba</code></td><td class="l">manda una respuesta conocida a las webs y mira si se lee bien</td><td class="l">portátil</td><td class="l">como <code>preguntar</code>, con la sonda siempre</td></tr><tr><td class="l"><code>web-instalar</code></td><td class="l">abre web/cola-web.user.js de este árbol en Firefox para instalarlo o actualizarlo en Violentmonkey</td><td class="l">portátil, desde cualquier árbol</td><td class="l">nada: abre el userscript en Firefox y lo instalas tú</td></tr><tr><td class="l"><code>vps-alta</code></td><td class="l">crea el repo del VPS para el repo actual y le añade el remoto vps</td><td class="l">portátil, dentro del repo</td><td class="l">por SSH, el repo bare del VPS; el remoto <code>vps</code>; con <code>--github</code>, el repo de la cuenta bot</td></tr><tr><td class="l"><code>actualizar</code></td><td class="l">pone en origin/main el VPS y luego la instalación de esta máquina (~/.local/bin/cola), sin pararlas a mitad de un tic</td><td class="l">portátil (en el VPS, solo él)</td><td class="l">por SSH, <code>~/cola</code> del VPS, y luego la instalación de aquí, adonde apunta <code>~/.local/bin/cola</code> (y <code>daemon-reload</code> si cambió <code>systemd/</code>)</td></tr><tr><td class="l"><code>vps-actualizar</code></td><td class="l">pone el código del VPS en origin/main, sin pararlo a mitad de un tic</td><td class="l">portátil</td><td class="l">por SSH, <code>~/cola</code> del VPS (y <code>daemon-reload</code> si cambió <code>systemd/</code>)</td></tr><tr><td class="l"><code>despertar</code></td><td class="l">llamada mínima a una hora para abrir la ventana de 5 h</td><td class="l">portátil</td><td class="l">un trabajo de prioridad alta con <code>no_antes</code></td></tr><tr><td class="l"><code>lista</code></td><td class="l">lista los trabajos y su estado</td><td class="l">portátil o VPS</td><td class="l">solo lee</td></tr><tr><td class="l"><code>ver</code></td><td class="l">un trabajo: pasos, estado y, con <code>--salidas</code>, las respuestas</td><td class="l">portátil o VPS</td><td class="l">solo lee</td></tr><tr><td class="l"><code>tic</code></td><td class="l">una pasada: ejecuta un paso, o hasta [general] a_la_vez a la vez</td><td class="l">systemd (portátil y VPS) o a mano</td><td class="l"><code>estado.json</code>, <code>salidas/</code>, <code>esperas/</code>, <code>cuotas/</code>, <code>bloqueos/</code>, <code>registro/</code>; commit y push; borra las consultas viejas de la caché</td></tr><tr><td class="l"><code>estado</code></td><td class="l">resumen de la cola; con <code>--json</code>, para el panel GNOME</td><td class="l">panel GNOME o portátil</td><td class="l">solo lee</td></tr><tr><td class="l"><code>cuotas</code></td><td class="l">vuelve a leer las cuotas que esta máquina sabe leer (las de lectura más vieja que --edad) y las enseña; con --json, como «cuotas» de estado --json (Super+U del panel)</td><td class="l">panel GNOME o portátil</td><td class="l"><code>~/.cache/cola/cuotas.json</code>, <code>cuotas/</code> (sin commit: lo sube el tic); renueva tokens OAuth de Claude</td></tr><tr><td class="l"><code>seguir</code></td><td class="l">en vivo: los trabajos sin acabar y los hechos hace poco, cada uno como la cadena de sus pasos con colores y flechas; con teclas para pausar, aprobar, reintentar, cancelar, lanzar un tic y ver las cuotas; / todas las órdenes y buscar; q o Ctrl-C para salir</td><td class="l">portátil o VPS, en una terminal</td><td class="l">lee (el cerrojo del tic, en <code>/proc/locks</code>); con <code>--pull</code> o <code>u</code>, <code>git pull</code> de cola-datos si no hay tic; sus teclas, lo de <code>pausar</code>, <code>reanudar</code>, <code>cancelar</code>, <code>aprobar</code>, <code>reintentar</code> y <code>usar-reserva</code> (commit solo sin tic) y <code>t</code> lanza <code>cola tic</code></td></tr><tr><td class="l"><code>pausar</code></td><td class="l">el trabajo no sigue tras el paso en marcha</td><td class="l">portátil</td><td class="l"><code>control.json</code></td></tr><tr><td class="l"><code>reanudar</code></td><td class="l">quita la pausa</td><td class="l">portátil</td><td class="l"><code>control.json</code></td></tr><tr><td class="l"><code>cancelar</code></td><td class="l">el trabajo no vuelve a correr</td><td class="l">portátil</td><td class="l"><code>control.json</code></td></tr><tr><td class="l"><code>aprobar</code></td><td class="l">aprueba el trabajo tal como está (su huella) y los pasos «revisar» hechos</td><td class="l">portátil</td><td class="l"><code>control.json</code></td></tr><tr><td class="l"><code>reintentar</code></td><td class="l">vuelve a poner en pendiente los pasos en error o inciertos</td><td class="l">portátil</td><td class="l"><code>estado.json</code></td></tr><tr><td class="l"><code>usar-reserva</code></td><td class="l">deja que un paso gaste la reserva de cuota (5 h y semanal) una vez, en vez de esperar al reinicio; el límite de verdad y el tope diario siguen mandando</td><td class="l">portátil</td><td class="l"><code>control.json</code></td></tr><tr><td class="l"><code>conservar</code></td><td class="l">que el tic no borre una consulta de preguntar a los 30 días</td><td class="l">portátil o VPS</td><td class="l">el fichero <code>CONSERVAR</code> de una carpeta de <code>~/.cache/cola/consultas/</code></td></tr><tr><td class="l"><code>informe</code></td><td class="l">llamadas, tiempo, gasto y cuota por ruta</td><td class="l">portátil</td><td class="l">solo lee <code>registro/</code></td></tr><tr><td class="l"><code>catalogo</code></td><td class="l">las rutas y su cuota; <code>--actualizar</code> lista modelos de los CLIs que faltan en <code>modelos.toml</code></td><td class="l">portátil</td><td class="l">solo lee</td></tr><tr><td class="l"><code>plan-actions</code></td><td class="l">uso interno (workflow): JSON del siguiente paso de Actions</td><td class="l">job plan del workflow cola</td><td class="l">solo lee</td></tr><tr><td class="l"><code>aplicar-comando</code></td><td class="l">uso interno (workflow): guarda el resultado de un paso</td><td class="l">job aplicar del workflow cola</td><td class="l"><code>salidas/</code>, <code>estado.json</code></td></tr><tr><td class="l"><code>fusionar</code></td><td class="l">uso interno: driver de git para estado.json y control.json</td><td class="l">git, al fusionar cola-datos</td><td class="l"><code>estado.json</code>, <code>control.json</code> y <code>actions/pendientes.txt</code></td></tr></tbody></table></div><details><summary>Topes y tiempos (leídos del código)</summary><div class="tabla"><table><thead><tr><th class="l">Nombre</th><th class="r">Valor</th><th class="l">Dónde</th><th class="l">Para qué</th></tr></thead><tbody><tr><td class="l"><code>CONTEXTO_MAX</code></td><td class="r">80 000 caracteres</td><td class="l"><code>cola.py</code></td><td class="l">tope de lo que mete <code>--contexto</code> en un prompt</td></tr><tr><td class="l"><code>WEB_MAX</code></td><td class="r">100 000 caracteres</td><td class="l"><code>adaptadores.py</code></td><td class="l">prompt máximo de una web</td></tr><tr><td class="l"><code>PROMPT_MAX_CLI</code></td><td class="r">300 000 caracteres</td><td class="l"><code>cola.py</code></td><td class="l">prompt de una revisión a un CLI que lo lee por stdin: el diff, entero hasta aquí</td></tr><tr><td class="l"><code>MARGEN_REVISION</code></td><td class="r">20 000 caracteres</td><td class="l"><code>cola.py</code></td><td class="l">lo que se guarda por respuesta si contrasta o revisa una web</td></tr><tr><td class="l"><code>CONVENCIONES_MAX</code></td><td class="r">6 000 caracteres</td><td class="l"><code>cola.py</code></td><td class="l"><code>AGENTS.md</code> o <code>CLAUDE.md</code> del repo, recortado</td></tr><tr><td class="l"><code>SALIDA_MAX</code></td><td class="r">20 000 caracteres</td><td class="l"><code>cola.py</code></td><td class="l">salida de un comando o diff que se guarda</td></tr><tr><td class="l"><code>ARG_MAX_PROMPT</code></td><td class="r">120 000 bytes</td><td class="l"><code>adaptadores.py</code></td><td class="l">prompt de OpenCode y agy, que va como argumento</td></tr><tr><td class="l"><code>TIEMPO_MAX_MIN</code></td><td class="r">30 min</td><td class="l"><code>cola.py</code></td><td class="l">tiempo máximo por paso si <code>config.toml</code> no dice otro</td></tr><tr><td class="l"><code>TIEMPO_MAX_TOPE</code></td><td class="r">300 min</td><td class="l"><code>cola.py</code></td><td class="l">tope de <code>tiempo_max_min</code> de un trabajo</td></tr><tr><td class="l"><code>TIEMPO_MAX_WEB_MIN</code></td><td class="r">60 min</td><td class="l"><code>cola.py</code></td><td class="l">tiempo mínimo de <code>cola preguntar</code> a una web</td></tr><tr><td class="l"><code>TIEMPO_ACTIONS_MAX</code></td><td class="r">55 min</td><td class="l"><code>cola.py</code></td><td class="l">tope de un comando en Actions</td></tr><tr><td class="l"><code>TOPE_PASOS</code></td><td class="r">10</td><td class="l"><code>cola.py</code></td><td class="l">ejecuciones por trabajo, reintentos incluidos, si no dice otro</td></tr><tr><td class="l"><code>MAX_ABANICO</code></td><td class="r">8</td><td class="l"><code>cola.py</code></td><td class="l">subconsultas de un abanico</td></tr><tr><td class="l"><code>INTENTOS_LIMITE</code></td><td class="r">5</td><td class="l"><code>cola.py</code></td><td class="l">límites seguidos antes de dar el paso por error</td></tr><tr><td class="l"><code>ESPERA_LIMITE</code></td><td class="r">1 h</td><td class="l"><code>cola.py</code></td><td class="l">bloqueo tras un límite si el CLI no dice hasta cuándo</td></tr><tr><td class="l"><code>ESPERA_TRANSITORIO</code></td><td class="r">10 min</td><td class="l"><code>adaptadores.py</code></td><td class="l">bloqueo si el error es saturación del servidor, no el límite de la cuenta</td></tr><tr><td class="l"><code>MARGEN_LEVANTAR</code></td><td class="r">10 min</td><td class="l"><code>cola.py</code></td><td class="l">tras un bloqueo, cuándo empieza a mirarse la cuota real para levantarlo o alargarlo</td></tr><tr><td class="l"><code>BLOQUEO_LARGO</code></td><td class="r">6 h</td><td class="l"><code>cola.py</code></td><td class="l">un bloqueo más largo (la fecha de un límite semanal) no lo toca la cuota real</td></tr><tr><td class="l"><code>MARGEN_HUERFANO</code></td><td class="r">20 min</td><td class="l"><code>cola.py</code></td><td class="l">margen sobre el tiempo máximo para dar por caído un paso de otra máquina</td></tr><tr><td class="l"><code>CUOTA_VALIDA</code></td><td class="r">15 min</td><td class="l"><code>cola.py</code></td><td class="l">antigüedad máxima de una cuota leída en otra máquina</td></tr><tr><td class="l"><code>CACHE_TTL</code></td><td class="r">10 min</td><td class="l"><code>cuotas.py</code></td><td class="l">caché de una lectura de cuota</td></tr><tr><td class="l"><code>RESERVA_5H</code></td><td class="r">30 %</td><td class="l"><code>catalogo.py</code></td><td class="l">de la ventana de 5 h que la cola no toca, si <code>config.toml</code> no dice otro</td></tr><tr><td class="l"><code>RESERVA_SEMANA</code></td><td class="r">20 %</td><td class="l"><code>catalogo.py</code></td><td class="l">de la semana que la cola no toca</td></tr><tr><td class="l"><code>TOPE_DIARIO</code></td><td class="r">40</td><td class="l"><code>catalogo.py</code></td><td class="l">ejecuciones al día por cuenta</td></tr><tr><td class="l"><code>VENTANA_RELLENO_H</code></td><td class="r">6 h</td><td class="l"><code>catalogo.py</code></td><td class="l">antes de un reinicio, cuándo corre «relleno»</td></tr><tr><td class="l"><code>WEB_TURNO_MAX</code></td><td class="r">90 s</td><td class="l"><code>adaptadores.py</code></td><td class="l">turno de envío de una pestaña</td></tr><tr><td class="l"><code>WEB_INACTIVIDAD</code></td><td class="r">5 min</td><td class="l"><code>adaptadores.py</code></td><td class="l">sin noticias del userscript: se corta</td></tr><tr><td class="l"><code>WEB_REINTENTO_MIN</code></td><td class="r">1 min</td><td class="l"><code>adaptadores.py</code></td><td class="l">lo que ha de quedar para reintentar una web que no llegó a enviar</td></tr><tr><td class="l">latido</td><td class="r">30 s</td><td class="l"><code>web/cola-web.user.js</code></td><td class="l">el userscript da señales mientras espera la respuesta</td></tr><tr><td class="l"><code>OnUnitActiveSec</code></td><td class="r">5 min</td><td class="l"><code>systemd/cola.timer</code></td><td class="l">cada cuánto hay tic</td></tr><tr><td class="l"><code>TimeoutStartSec</code></td><td class="r">330 min</td><td class="l"><code>systemd/cola.service</code></td><td class="l">tope de un tic</td></tr><tr><td class="l">vueltas</td><td class="r">20</td><td class="l"><code>actions/cola-datos.yml</code></td><td class="l">relanzamientos seguidos del workflow cola</td></tr></tbody></table></div></details><details><summary>Los 38 ficheros y grupos del repo</summary><div class="tabla"><table><thead><tr><th class="l">Fichero</th><th class="l">Qué es</th></tr></thead><tbody><tr><td class="l"><code>cola.py</code></td><td class="l">CLI y planificador: trabajos, tic, git de cola-datos, clones, preguntar, Actions y fusión</td></tr><tr><td class="l"><code>adaptadores.py</code></td><td class="l">un adaptador por CLI (cómo se lanza y cómo se lee su salida) y las webs: escuchador y turno</td></tr><tr><td class="l"><code>catalogo.py</code></td><td class="l">carga <code>modelos.toml</code> y elige la ruta: requisitos, cuota, reservas y topes</td></tr><tr><td class="l"><code>cuotas.py</code></td><td class="l">lee la cuota de Claude y de Codex de sus endpoints, y la de agy con <code>agy -p /usage</code>, con caché; renueva el token OAuth de Claude si caduca</td></tr><tr><td class="l"><code>revisiones.py</code></td><td class="l">issues y PRs de GitHub: los lee con <code>gh</code>, da forma al comentario, lo publica y entiende «/cola revisar»</td></tr><tr><td class="l"><code>afirmaciones.py</code></td><td class="l">lo común a revisiones y procesos (#52, #56): qué se envió (manifiesto), la afirmación y <code>comprobar</code> con sus fuentes (git y web; la web, con caché en <code>http/</code> y registro en <code>http.jsonl</code> de la caché)</td></tr><tr><td class="l"><code>lotes.py</code></td><td class="l">lotes con esquema y criterios (#56): el sobre, el esquema de los datos (un subconjunto de JSON Schema), leer lo que vuelve y los criterios <code>responde</code>, <code>cita</code> y <code>juntos</code>, con <code>cumple</code> en la tabla <code>afirmaciones/</code></td></tr><tr><td class="l"><code>seguir.py</code></td><td class="l">cómo se pintan <code>cola seguir</code> y la cadena de <code>cola ver</code>: trabajos agrupados por lo que piden, pasos con colores y flechas, tabla de pasos, lotes, cuotas en barras con su ritmo, carriles de llamadas por cuenta, llamadas por día en cuadros verdes, la pestaña Cola (orden del tic, esperas por máquina, commits de cola-datos), la pestaña Consultas (cada llamada del registro, de dónde salió y sobre qué, con filtro) y la pestaña Sesiones (las sesiones vivas de Claude Code y Codex con sus consultas), pestañas, cabecera (plegable), la cinta de órdenes, la línea del elegido y la ventana «/» (todas las órdenes y buscar)</td></tr><tr><td class="l"><code>red.py</code></td><td class="l">bajar una URL que da un modelo con guardas contra SSRF (#56): solo IPs públicas, conexión a la IP ya mirada, topes, en un subproceso que se mata</td></tr><tr><td class="l"><code>contexto.py</code></td><td class="l">contexto gratis de una revisión de PR (#53): funciones que cambian, lo que llaman, quién las llama e historia, con <code>ast</code> y git</td></tr><tr><td class="l"><code>modelos.toml</code></td><td class="l">catálogo: rutas (CLI, cuenta, modelo) y alias</td></tr><tr><td class="l"><code>maquina.ejemplo.toml</code></td><td class="l">ejemplo de <code>~/.config/cola/maquina.toml</code> del portátil</td></tr><tr><td class="l"><code>maquina.vps.ejemplo.toml</code></td><td class="l">ejemplo de <code>~/.config/cola/maquina.toml</code> del VPS</td></tr><tr><td class="l"><code>maquina.actions.toml</code></td><td class="l">la de los runners de Actions (la usa el workflow cola)</td></tr><tr><td class="l"><code>datos.gitattributes</code></td><td class="l">qué ficheros de cola-datos fusiona <code>cola.py fusionar</code></td></tr><tr><td class="l"><code>.gh-dash.yml</code></td><td class="l">gh-dash (<code>gh dash</code> dentro del repo): PRs e issues, con R = <code>cola revisar</code> y S = <code>cola seguir</code></td></tr><tr><td class="l"><code>plantillas/*.md</code></td><td class="l">plantillas de prompt (ver «Consultas»)</td></tr><tr><td class="l"><code>plantillas/LEEME.txt</code></td><td class="l">cómo se usan las plantillas y la licencia de <code>depurar.md</code></td></tr><tr><td class="l"><code>web/cola-web.user.js</code></td><td class="l">userscript de ChatGPT, Gemini, Copilot y DeepSeek para la cola</td></tr><tr><td class="l"><code>web/sin_ventana.py</code></td><td class="l">una web en un Firefox sin ventana con una copia de la sesión: su HTML o el userscript de verdad</td></tr><tr><td class="l"><code>chatgpt/chatgpt-cola.user.js</code></td><td class="l">userscript de ChatGPT para <code>chatgpt -y</code> desde la terminal</td></tr><tr><td class="l"><code>skill/consultar-cola/SKILL.md</code></td><td class="l">skill de Claude Code y Codex, el índice: cuándo usar <code>preguntar</code>, <code>nuevo</code>, <code>revisar</code> o Multi-CLI</td></tr><tr><td class="l"><code>skill/consultar-cola/*.md</code></td><td class="l">el detalle de la skill, que se lee cuando toca: webs, contexto, encargos y ejemplos</td></tr><tr><td class="l"><code>systemd/cola.service</code></td><td class="l">una pasada de <code>cola tic</code>, con tope de tiempo</td></tr><tr><td class="l"><code>systemd/cola.timer</code></td><td class="l">lanza el servicio cada pocos minutos</td></tr><tr><td class="l"><code>actions/cola-datos.yml</code></td><td class="l">workflow cola, para copiar a <code>.github/workflows/cola.yml</code> de cola-datos</td></tr><tr><td class="l"><code>.github/workflows/ci.yml</code></td><td class="l">CI de este repo</td></tr><tr><td class="l"><code>tests/*</code></td><td class="l">tests, con CLIs falsos en <code>tests/falsos/</code></td></tr><tr><td class="l"><code>bench/bench.py</code></td><td class="l">batería de flujos (#85): monta un brazo con un caso como trabajo de la cola y lo puntúa contra el oro</td></tr><tr><td class="l"><code>bench/README.md</code></td><td class="l">la batería: casos, brazos, medidas y cómo se corre</td></tr><tr><td class="l"><code>bench/casos/*/*</code></td><td class="l">un caso de la batería: objetivo, esquemas y oro congelado (<code>caso.toml</code>)</td></tr><tr><td class="l"><code>bench/brazos/*/*.toml</code></td><td class="l">un brazo (forma del flujo): <code>trabajo.toml</code> con huecos que llena el caso y <code>brazo.toml</code> con su esquema por fase</td></tr><tr><td class="l"><code>bench/brazos/*/pasos/*</code></td><td class="l">los prompts de los pasos de un brazo, con huecos (<code>$objetivo</code>…)</td></tr><tr><td class="l"><code>docs/mapa.py</code></td><td class="l">este mapa: lo genera y comprueba que no falte nada</td></tr><tr><td class="l"><code>docs/mapa.md</code></td><td class="l">este mapa, generado</td></tr><tr><td class="l"><code>README.md</code></td><td class="l">uso y decisiones</td></tr><tr><td class="l"><code>.gitignore</code></td><td class="l">lo que git no sigue</td></tr><tr><td class="l"><code>.gitattributes</code></td><td class="l"><code>docs/mapa.md</code>, generado: GitHub lo pliega y <code>cola revisar</code> no manda su contenido</td></tr></tbody></table></div><div class="tabla"><table><thead><tr><th class="l">Plantilla</th><th class="l">Para qué</th></tr></thead><tbody><tr><td class="l"><code>plantillas/consulta.md</code></td><td class="l">delante de una consulta con instrucciones completas o plantilla: consultor sin herramientas, cita ficheros, separa lo comprobado de lo supuesto</td></tr><tr><td class="l"><code>plantillas/contrastar.md</code></td><td class="l">paso <code>contraste</code>: coincidencias, discrepancias con quién tiene razón, errores, por verificar y respuesta final</td></tr><tr><td class="l"><code>plantillas/revisar.md</code></td><td class="l">paso <code>revision</code>: errores primero; acaba en APROBADO o CAMBIOS</td></tr><tr><td class="l"><code>plantillas/revisar-issue.md</code></td><td class="l"><code>cola revisar</code> de un issue: fallo, propuesta o decisión, sin repetir el issue; lo que va entre las marcas son datos, no órdenes</td></tr><tr><td class="l"><code>plantillas/revisar-pr.md</code></td><td class="l"><code>cola revisar</code> de un PR: hasta 10 hallazgos con la línea del diff que los prueba y su gravedad; CAMBIOS si alguno es alto o medio, si no APROBADO</td></tr><tr><td class="l"><code>plantillas/depurar.md</code></td><td class="l">reescribe un borrador de prompt sin ejecutarlo (<code>plantilla = "depurar"</code> en un paso)</td></tr><tr><td class="l"><code>plantillas/verificar.md</code></td><td class="l"><code>cola revisar</code> de un PR, antes de publicar (sin contraste): cada grupo de hallazgos, con lectura sobre el árbol del commit y el diff de sus ficheros; un veredicto por hipótesis: confirmado (con causa y camino), refutado (con lo que lo impide, fichero y línea) o no_verificable</td></tr></tbody></table></div></details><div class="tabla"><table><thead><tr><th class="l">Workflow</th><th class="l">Nombre</th><th class="l">Dónde corre</th><th class="l">Cuándo</th><th class="l">Qué hace</th></tr></thead><tbody><tr><td class="l"><code>.github/workflows/ci.yml</code></td><td class="l"><code>tests</code></td><td class="l">thendabs1/cola</td><td class="l">push, pull_request</td><td class="l">la batería completa de tests, con la de este mapa (<code>tests/test_mapa.py</code>)</td></tr><tr><td class="l"><code>actions/cola-datos.yml</code></td><td class="l"><code>cola</code></td><td class="l">thendabs1/cola-datos, copiado a <code>.github/workflows/cola.yml</code></td><td class="l">push, workflow_dispatch (actions/pendientes.txt)</td><td class="l">pasos de tipo comando, uno por vuelta: plan → ejecutar → aplicar</td></tr></tbody></table></div><p>Tests: <code>python3 -W error::ResourceWarning -m unittest discover -s tests</code>, la batería que corre la CI. Los CLIs, Firefox, <code>ssh</code>, <code>gh</code> y <code>systemctl</code> se sustituyen por los falsos de <code>tests/falsos/</code>.</p></section></main>
+<footer>Generada por <code>docs/mapa.py</code> a partir del código del 20/11/2026 (25795c2). Los diagramas los pinta <a href="https://mermaid.js.org">Mermaid</a> (licencia MIT), desde una copia en este mismo sitio.</footer></div>
+<script src="mermaid.min.js"></script>
+<script>
+(() => {
+  // Página pública: pinta los diagramas con la copia de Mermaid que va a su lado, en el tema del sistema.
+  const pres = [...document.querySelectorAll("pre.mermaid")];
+  for (const p of pres) p.dataset.fuente = p.textContent;
+  const oscuro = matchMedia("(prefers-color-scheme: dark)");
+  async function pintar(primera) {
+    mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: oscuro.matches ? "dark" : "default" });
+    for (const p of pres) { p.removeAttribute("data-processed"); p.textContent = p.dataset.fuente; }
+    await mermaid.run({ nodes: pres, suppressErrors: true });
+    // Al pintarse, la página cambia de alto: si se llegó con un enlace a una sección, vuelve a ella.
+    if (primera && location.hash) document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView();
+  }
+  oscuro.addEventListener("change", () => pintar(false));
+  pintar(true);
+})();
+</script>
+<script>
+(() => {
+  // Zoom, arrastre y pantalla completa de los diagramas: el visor pinta el SVG; si aún no está, no hace nada.
+  function zoom(caja, como) {
+    if (como === "pantalla") {
+      try { document.fullscreenElement ? document.exitFullscreen() : caja.requestFullscreen?.().catch(() => {}); } catch (e) {}
+      return;
+    }
+    const svg = caja.querySelector("svg");
+    if (!svg) return;
+    if (como === "ajustar") { svg.style.width = ""; svg.style.maxWidth = svg.dataset.max || ""; return; }
+    if (svg.dataset.max === undefined) svg.dataset.max = svg.style.maxWidth;
+    const natural = svg.viewBox.baseVal?.width || svg.getBoundingClientRect().width;
+    const ahora = svg.getBoundingClientRect().width;
+    svg.style.maxWidth = "none";
+    svg.style.width = Math.max(natural * 0.25, Math.min(natural * 5, ahora * (como === "mas" ? 1.35 : 1 / 1.35))) + "px";
+  }
+  document.addEventListener("click", e => {
+    const b = e.target.closest(".herr button");
+    if (b) zoom(b.closest(".diagrama"), b.dataset.z);
+  });
+  for (const c of document.querySelectorAll(".lienzo")) {
+    let x = 0, y = 0, on = false;
+    c.addEventListener("pointerdown", e => { if (e.button !== 0) return; on = true; x = e.clientX; y = e.clientY; c.classList.add("arrastre"); });
+    addEventListener("pointerup", () => { on = false; c.classList.remove("arrastre"); });
+    c.addEventListener("pointermove", e => {
+      if (!on) return;
+      c.scrollLeft -= e.clientX - x; c.scrollTop -= e.clientY - y; x = e.clientX; y = e.clientY;
+    });
+  }
+  // Índice: marca la sección (y el diagrama) que se está leyendo, y la deja a la vista dentro del índice.
+  const destinos = [...document.querySelectorAll('nav.indice ol a[href^="#"]')]
+    .map(a => [a, document.getElementById(decodeURIComponent(a.hash.slice(1)))]).filter(([, d]) => d);
+  let leyendo, pendiente = false;
+  function aLaVista(a) {
+    const n = a.closest("nav");
+    if (a.offsetLeft < n.scrollLeft || a.offsetLeft + a.offsetWidth > n.scrollLeft + n.clientWidth) n.scrollLeft = a.offsetLeft - 24;
+    if (a.offsetTop < n.scrollTop || a.offsetTop + a.offsetHeight > n.scrollTop + n.clientHeight) n.scrollTop = a.offsetTop - n.clientHeight / 3;
+  }
+  function marcar() {
+    pendiente = false;
+    let actual = null;
+    for (const [, d] of destinos) { if (d.getBoundingClientRect().top > innerHeight * 0.3) break; actual = d; }
+    if (actual === leyendo) return;
+    leyendo = actual;
+    const seccion = actual?.closest("section");
+    let ultimo = null;
+    for (const [a, d] of destinos) {
+      if (d === actual || d === seccion) { a.setAttribute("aria-current", "location"); if (a.offsetParent) ultimo = a; }
+      else a.removeAttribute("aria-current");
+    }
+    if (ultimo) aLaVista(ultimo);
+  }
+  addEventListener("scroll", () => { if (!pendiente) { pendiente = true; requestAnimationFrame(marcar); } }, { passive: true });
+  addEventListener("resize", () => { leyendo = undefined; marcar(); });
+  marcar();
+})();
+</script>
+</body>
+</html>
